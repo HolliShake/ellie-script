@@ -1,0 +1,61 @@
+true ? "y" : "Hello!";
+3 + 10.2;
+"Hey yow!" + "Hola!";
+
+1 + 2 + 3;
+
+fn test_void() Void {
+    2 + 2;
+}
+
+fn add(a Number, b Number) Number {
+    return a + b;
+}
+
+fn sub(a Int, b Int) Int {
+    {
+        if (true)
+        {
+            2 + 2;
+            return a + b;
+        }
+        
+        return 2n;
+    }
+    
+}
+
+fn mul(a Int, b Int) Int {
+    return a * b;
+}
+
+"Yeha" == "Yeha";
+
+if (3 > 2) 
+    100 << 100;
+else 
+    3 > 2;
+
+var sum Number = 2 + 2, dif String = "Hola" + "World!";
+
+const x Int = 100n, y Number = sum;
+
+console.log(1, 2, 3, add(20, 35), 20 + 32);
+console.warn;
+console.error;
+mul(1n, 1000n);
+
+fn factorial(n Number) Number {
+    let x Number = 2, y String = "Yellow";
+    if (n <= 1)
+        return 1;
+
+    return n * factorial(n - 1);
+}
+
+fn foo() Void {
+    return null;
+}
+
+console.log(factorial(5));
+console.error(factorial(5));

@@ -1,0 +1,7 @@
+.vscode
+libgc
+quickjs
+*.exe
+*.js
+*.c
+
