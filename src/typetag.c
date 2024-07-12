@@ -16,6 +16,7 @@ typetag_t* typetag_create(char* name) {
     typetag->argc = 0;
     typetag->is_variadict = false;
     typetag->is_callalble = false;
+    typetag->is_asynchronous = false;
     typetag->return_type = NULL;
     typetag->param_types = NULL;
     return typetag;
@@ -56,13 +57,14 @@ typetag_t* typetag_clone(typetag_t* typetag) {
     clone->argc = typetag->argc;
     clone->is_variadict = typetag->is_variadict;
     clone->is_callalble = typetag->is_callalble;
+    clone->is_asynchronous = typetag->is_asynchronous;
     clone->return_type = typetag->return_type;
     clone->param_types = typetag->param_types;    
     return clone;
 }
 
 char* typetag_get_name(typetag_t* self) {
-    return self->name;
+    return str__equals(self->name, KEYWORD_VOID) ? str__new(KEYWORD_NULL) : self->name;
 }
 
 /*****************************************/

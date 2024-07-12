@@ -540,6 +540,7 @@ void generator_statement(generator_t* self, context_t* context, ast_t* ast) {
             }
             break;
         }
+        case AST_ASYNC_FUNCTION:
         case AST_FUNCTION: {
             if (!context_is_global(context)) {
                 throw_errore(ast->position, "function declaration not allowed here");
@@ -547,12 +548,24 @@ void generator_statement(generator_t* self, context_t* context, ast_t* ast) {
 
             char* function_name = ((ast_terminal_t*) ((ast_function_t*) ast->value)->function_name->value)->value;
             /**************************************************/
+            bool export = ((ast_function_t*) ast->value)->is_export;
+            bool async  = ((ast_function_t*) ast->value)->is_async;
             symbol_info_t* symbol_info = table_lookup(context->table, function_name);
 
-            context_t* function_context = CONTEXT_FUNCTION(context);
+            context_t* function_context = (async) ? CONTEXT_AWAITABLE_FUNCTION(context) : CONTEXT_FUNCTION(context);
             context_bind_function_return(function_context, function_name, symbol_info->return_type);
+            
+            if (export) {
+                EMIT_CHILD("export ");
+            }
 
-            EMIT_CHILD(str__format("function %s", symbol_info->name));
+            if (async) {
+                EMIT_CHILD("async ");
+            } else {
+                EMIT_CHILD("");
+            }
+
+            EMIT(str__format("function %s", symbol_info->name));
             EMIT("(");
             int argc = 0;
             while (symbol_info->param_names[argc] != NULL) {
@@ -622,7 +635,6 @@ void generator_statement(generator_t* self, context_t* context, ast_t* ast) {
             context_t* current = context;
             while (current != NULL) {
                 if (context_is_function(current)) {
-                    printf("current: %s\n", current->function_name);
                     in_function = true;
                     break;
                 }
@@ -678,6 +690,7 @@ void generator_statement(generator_t* self, context_t* context, ast_t* ast) {
 static
 void generator_forward_declaration(generator_t* self, context_t* context, ast_t* ast) {
     switch (ast->type) {
+        case AST_ASYNC_FUNCTION:
         case AST_FUNCTION: {
             // Dummy context
             context_t* function_context = CONTEXT_FUNCTION(context);
@@ -726,7 +739,8 @@ void generator_forward_declaration(generator_t* self, context_t* context, ast_t*
                 argc,
                 param_names,
                 param_types,
-                return_type
+                return_type,
+                function->is_async
             ));
             break;
         }

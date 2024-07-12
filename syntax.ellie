@@ -8,6 +8,10 @@ fn test_void() Void {
     2 + 2;
 }
 
+const sum_of_add Number = add(200, 23);
+
+console.warn(":>>", sum_of_add);
+
 fn add(a Number, b Number) Number {
     return a + b;
 }
@@ -22,7 +26,6 @@ fn sub(a Int, b Int) Int {
         
         return 2n;
     }
-    
 }
 
 fn mul(a Int, b Int) Int {
@@ -59,3 +62,12 @@ fn foo() Void {
 
 console.log(factorial(5));
 console.error(factorial(5));
+
+
+if (3 > 2) {
+    const x Int = 10n;
+}
+
+pub async fn get_name() String {
+    return "";   
+}

@@ -177,7 +177,7 @@ ast_t* parser_terminal(parser_t* self) {
 
 static
 ast_t* parser_object_data_type(parser_t* self) {
-    position_t *start = self->curr_token->position, *ended;
+    position_t *start = self->curr_token->position, *ended = NULL;
     accept_value(KEYWORD_OBJECT);
     accept_value("<");
     ast_t* key = parser_type(self);
@@ -194,7 +194,7 @@ ast_t* parser_object_data_type(parser_t* self) {
 
 static
 ast_t* parser_earray_data_type(parser_t* self) {
-    position_t *start = self->curr_token->position, *ended;
+    position_t *start = self->curr_token->position, *ended = NULL;
     accept_value(KEYWORD_ARRAY);
     accept_value("<");
     ast_t* element_type = parser_type(self);
@@ -215,7 +215,7 @@ static ast_t* parser_group(parser_t* self) {
         return node;
     }
     else if (check_value(KEYWORD_OBJECT) || check_value("{")) {
-        position_t *start  = self->curr_token->position, *ended;
+        position_t *start  = self->curr_token->position, *ended = NULL;
         ast_t* object_type = (check_value(KEYWORD_OBJECT))? parser_object_data_type(self) : NULL;
 
         // data type mode
@@ -273,7 +273,7 @@ static ast_t* parser_group(parser_t* self) {
         );
     }
     else if (check_value(KEYWORD_ARRAY) || check_value("[")) {
-        position_t *start = self->curr_token->position, *ended;
+        position_t *start = self->curr_token->position, *ended = NULL;
         ast_t* array_type = (check_value(KEYWORD_ARRAY)) ? parser_earray_data_type(self) : NULL;
 
         // data type mode
@@ -316,7 +316,7 @@ static ast_t* parser_group(parser_t* self) {
 }
 
 static ast_t* parser_type(parser_t* self) {
-    position_t *start=self->curr_token->position, *ended;
+    position_t *start=self->curr_token->position, *ended = NULL;
     /*********************************************/
     bool object_type = check_value(KEYWORD_OBJECT);
     ast_t* data_type = check_value(KEYWORD_OBJECT) 
@@ -753,7 +753,7 @@ ast_t* parser_function(parser_t* self, bool is_export, bool is_async);
 
 static
 ast_t* parser_if_statement(parser_t* self) {
-    position_t *start = self->curr_token->position, *ended;
+    position_t *start = self->curr_token->position, *ended = NULL;
     accept_value(KEYWORD_IF);
     accept_value("(");
     ast_t* condition = parser_expression(self);
@@ -798,7 +798,7 @@ ast_t* parser_public(parser_t* self) {
 
 static
 ast_t* parser_variable_declaration(parser_t* self) {
-    position_t *start = self->curr_token->position, *ended;
+    position_t *start = self->curr_token->position, *ended = NULL;
     accept_value(KEYWORD_VAR);
 
     ast_t** vrble_names = create_ast_array(vsize);
@@ -861,7 +861,7 @@ ast_t* parser_variable_declaration(parser_t* self) {
 
 static
 ast_t* parser_const_declaration(parser_t* self) {
-    position_t *start = self->curr_token->position, *ended;
+    position_t *start = self->curr_token->position, *ended = NULL;
     accept_value(KEYWORD_CONST);
 
     ast_t** vrble_names = create_ast_array(vsize);
@@ -924,7 +924,7 @@ ast_t* parser_const_declaration(parser_t* self) {
 
 static
 ast_t* parser_local_declaration(parser_t* self) {
-    position_t *start = self->curr_token->position, *ended;
+    position_t *start = self->curr_token->position, *ended = NULL;
     accept_value(KEYWORD_LET);
 
     ast_t** vrble_names = create_ast_array(vsize);
@@ -993,7 +993,7 @@ ast_t* parser_async_function(parser_t* self, bool is_export) {
 
 static
 ast_t* parser_function(parser_t* self, bool is_export, bool is_async) {
-    position_t *start = self->curr_token->position, *ended;
+    position_t *start = self->curr_token->position, *ended = NULL;
     accept_value(KEYWORD_FN);
     ast_t* id = parser_terminal(self);
     if (id == NULL) {
@@ -1052,7 +1052,7 @@ ast_t* parser_function(parser_t* self, bool is_export, bool is_async) {
 
 static
 ast_t* parser_block(parser_t* self) {
-    position_t *start = self->curr_token->position, *ended;
+    position_t *start = self->curr_token->position, *ended = NULL;
     accept_value("{");
     ast_t** children = create_ast_array(bsize);
     assert_allocation(children);
@@ -1074,7 +1074,7 @@ ast_t* parser_block(parser_t* self) {
 
 static
 ast_t* parser_return_statement(parser_t* self) {
-    position_t *start = self->curr_token->position, *ended;
+    position_t *start = self->curr_token->position, *ended = NULL;
     accept_value(KEYWORD_RETURN);
     ast_t* value = parser_expression(self);
     accept_value(";");
@@ -1141,7 +1141,7 @@ ast_t* parser_statement(parser_t* self) {
 
 static
 ast_t* parser_program(parser_t* self) {
-    position_t *start = self->curr_token->position, *ended;
+    position_t *start = self->curr_token->position, *ended = NULL;
 
     ast_t** children = create_ast_array(bsize);
     assert_allocation(children);

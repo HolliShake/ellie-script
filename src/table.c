@@ -69,7 +69,7 @@ symbol_info_t* symbol_info_create_variable(char* name, typetag_t* data_type, boo
     return symbol_info;
 }
 
-symbol_info_t* symbol_info_create_function(char* name, typetag_t* data_type, int argc, char** parameter_names, typetag_t** parameter_types, typetag_t* return_type) {
+symbol_info_t* symbol_info_create_function(char* name, typetag_t* data_type, int argc, char** parameter_names, typetag_t** parameter_types, typetag_t* return_type, bool is_asynchronous) {
     symbol_info_t* symbol_info = (symbol_info_t*) Ellie_malloc(sizeof(symbol_info_t));
     assert_allocation(symbol_info);
     symbol_info->name = name;
@@ -78,5 +78,6 @@ symbol_info_t* symbol_info_create_function(char* name, typetag_t* data_type, int
     symbol_info->param_names = parameter_names;
     symbol_info->param_types = parameter_types;
     symbol_info->return_type = return_type;
+    symbol_info->is_asynchronous = is_asynchronous;
     return symbol_info;
 }

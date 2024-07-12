@@ -29,10 +29,11 @@
         /**** For function ****/
         int argc; // supported argument count or number of parameters
         char** param_names;
-        typetag_t* return_type;
         typetag_t** param_types;
+        typetag_t* return_type;
+        bool is_asynchronous;
     } symbol_info_t;
 
     symbol_info_t* symbol_info_create_variable(char* name, typetag_t* data_type, bool is_global, bool is_constant);
-    symbol_info_t* symbol_info_create_function(char* name, typetag_t* data_type, int argc, char** parameter_names, typetag_t** parameter_types, typetag_t* return_type);
+    symbol_info_t* symbol_info_create_function(char* name, typetag_t* data_type, int argc, char** parameter_names, typetag_t** parameter_types, typetag_t* return_type, bool is_asynchronous);
 #endif

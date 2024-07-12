@@ -25,6 +25,7 @@
         int argc; // supported argument count or number of parameters
         bool is_variadict;
         bool is_callalble;
+        bool is_asynchronous;
         typetag_t* return_type;
         typetag_t** param_types;
     } typetag_t;
