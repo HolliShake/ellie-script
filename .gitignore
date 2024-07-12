@@ -3,5 +3,5 @@ libgc
 quickjs
 *.exe
 *.js
-*.c
+./*.c
 
