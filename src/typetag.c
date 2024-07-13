@@ -33,7 +33,8 @@ typetag_t* typetag_create_function_type(typetag_t** param_types, typetag_t* retu
         }
     }
 
-    char* str = str__format("%s(%s) -> %s", KEYWORD_FN, type_strings, typetag_get_name(return_type));
+    char* header = (is_async) ? "async " : "";
+    char* str = str__format("%s%s(%s) -> %s", header, KEYWORD_FN, type_strings, typetag_get_name(return_type));
     Ellie_free(type_strings);
     
     typetag_t* typetag = typetag_create(str);
@@ -66,6 +67,24 @@ typetag_t* typetag_clone(typetag_t* typetag) {
 
 char* typetag_get_name(typetag_t* self) {
     return str__equals(self->name, KEYWORD_VOID) ? str__new(KEYWORD_NULL) : self->name;
+}
+
+char* typetag_get_default_value_string(typetag_t* self) {
+    if (typetag_is_number(self))
+        return str__new("0");
+    else if (typetag_is_int(self))
+        return str__new("0n");
+    else if (typetag_is_string(self))
+        return str__new("\"\"");
+    else if (typetag_is_bool(self))
+        return str__new("false");
+    else if (typetag_is_void(self))
+        return str__new("void");
+    else if (typetag_is_null(self))
+        return str__new("null");
+    else
+        // Just put it here :P
+        return str__new("null");
 }
 
 /*****************************************/
@@ -130,6 +149,10 @@ bool typetag_is_null(typetag_t* self) {
     return str__equals(self->name, KEYWORD_NULL);
 }
 
+bool typetag_is_nullable(typetag_t* self) {
+    return typetag_is_void(self) || typetag_is_null(self) || self->is_nullable;
+}
+
 bool typetag_is_callable(typetag_t* self) {
     return self->is_callalble;
 }
@@ -140,6 +163,8 @@ void typetag_to_nullable(typetag_t* self) {
 
 bool typetag_can_accept(typetag_t* variable_type, typetag_t* value_type) {
     if (typetag_is_any(variable_type))
+        return true;
+    else if (typetag_is_nullable(variable_type) && typetag_is_null(value_type))
         return true;
     else if (typetag_is_number(variable_type) && typetag_is_number(value_type))
         return true;
@@ -159,6 +184,12 @@ bool typetag_can_accept(typetag_t* variable_type, typetag_t* value_type) {
 typetag_t* typetag_equivalent(typetag_t* lhs, typetag_t* rhs) {
     if (str__equals(typetag_get_name(lhs), typetag_get_name(rhs)))
         return typetag_clone(lhs);
+    return NULL;
+}
+
+typetag_t* typetag_incdec(typetag_t* typetag) {
+    if (typetag_is_number(typetag) || typetag_is_int(typetag))
+        return typetag_clone(typetag);
     return NULL;
 }
 

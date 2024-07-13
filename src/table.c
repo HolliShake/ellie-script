@@ -84,6 +84,10 @@ symbol_info_t* symbol_info_create_function(char* name, typetag_t* data_type, int
     return symbol_info;
 }
 
+void symbol_info_mark_as_constant(symbol_info_t* self) {
+    self->is_constant = true;
+}
+
 void symbol_info_mark_as_exported(symbol_info_t* self) {
     self->is_exported = true;
 }

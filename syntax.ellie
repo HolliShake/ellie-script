@@ -39,7 +39,7 @@ if (3 > 2)
 else 
     3 > 2;
 
-var sum Number = 2 + 2, dif String = "Hola" + "World!";
+var sum Number = 2 + 2, dif String = ("Hola" + "World!");
 
 const x Int = 100n, y Number = sum;
 
@@ -85,6 +85,11 @@ pub fn exp() Number {
 
 var index Number = 0;
 
+console.log("INDEX:", index++);
+console.log("INDEX:",  index );
+
+index++;
+
 while (index < 10) {
     let msg String = "Loop";
     console.log(msg + "...", index = index + 1);
@@ -97,3 +102,10 @@ if (true && false) {
 
 pub var K Int = 2n;
 pub const V Int = K + 10n;
+
+var z Int;
+
+console.log(z);
+
+const nu Number = 10 * 2;
+

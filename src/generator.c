@@ -54,6 +54,18 @@ generator_t* generator_create(char* file_path_or_name, char* source) {
     }\
 }\
 
+#define ASSERT_TYPE_POSTFIX_EXPRESSION(condition, operand, opt) {\
+    if (!condition) {\
+        throw_errorf(ast->position, "invalid operand type %s for operator \"%s\"", typetag_get_name(operand), opt);\
+    }\
+}\
+
+#define ASSERT_TYPE_UNARY_EXPRESSION(condition, operand, opt) {\
+    if (!condition) {\
+        throw_errorf(ast->position, "invalid operand type %s for operator \"%s\"", typetag_get_name(operand), opt);\
+    }\
+}\
+
 #define ASSERT_TYPE_BINARY_EXPRESSION(condition, lhs, rhs, opt) {\
     if (!condition) {\
         throw_errorf(ast->position, "invalid operand types %s and %s for operator \"%s\"", typetag_get_name(lhs), typetag_get_name(rhs), opt);\
@@ -102,6 +114,11 @@ typetag_t* generator_datatype(generator_t* self, context_t* context, ast_t* ast)
         case AST_VOID_DATA_TYPE: {
             return TYPETAG_VOID;
         }
+        case AST_NULLABLE_DATA_TYPE: {
+            typetag_t* data_type = generator_datatype(self, context, ((ast_nullable_type_t*) ast->value)->type);
+            typetag_to_nullable(data_type);
+            return data_type;
+        }
         default:
             DUMP_JSCODE();
             throw_errorf(ast->position, "unknown AST type: %s", AST_XNAME(ast->type));
@@ -110,13 +127,16 @@ typetag_t* generator_datatype(generator_t* self, context_t* context, ast_t* ast)
 }
 
 static
-typetag_t* generator_get_identifier(generator_t* self, context_t* context, ast_t* ast) {
+typetag_t* generator_get_identifier(generator_t* self, context_t* context, ast_t* ast, bool is_mutation) {
     char* ID = ((ast_terminal_t*) ast->value)->value;
     if (!table_defined(context->table, ID)) {
         throw_errorf(ast->position, "undefined variable %s", ID);
     }
     EMIT(str__format("%s", ID));
     symbol_info_t* symbol_info = table_lookup(context->table, ID);
+    if (is_mutation && symbol_info->is_constant) {
+        throw_errorf(ast->position, "cannot assign to constant variable %s", ID);
+    }
     return typetag_clone(symbol_info->data_type);
 }
 
@@ -143,7 +163,7 @@ static
 typetag_t* generator_expression(generator_t* self, context_t* context, ast_t* ast) {
     switch (ast->type) {
         case AST_ID: {
-            return generator_get_identifier(self, context, ast);
+            return generator_get_identifier(self, context, ast, false);
         }
         case AST_NUMBER_FROM_INT: {
             char* number = ((ast_terminal_t*) ast->value)->value;
@@ -223,6 +243,25 @@ typetag_t* generator_expression(generator_t* self, context_t* context, ast_t* as
             return typetag_clone(function_type->return_type);
         }
         // 
+        case AST_POSTFIX_INC:
+        case AST_POSTFIX_DEC: {
+            char*  opt = ((ast_postfix_t*) ast->value)->operator;
+            ast_t* lhs = ((ast_postfix_t*) ast->value)->operand;
+            /**************************************************/
+            typetag_t* ltype;
+            switch (lhs->type) {
+                case AST_ID: {
+                    ltype = generator_get_identifier(self, context, lhs, true);
+                    break;
+                }
+                default:
+                    throw_errore(ast->position, "invalid operand in postfix expression");
+            }
+            EMIT(str__format("%s", opt));
+            typetag_t* dtype;
+            ASSERT_TYPE_POSTFIX_EXPRESSION((dtype = typetag_incdec(ltype)), ltype, opt);
+            return dtype;
+        }
         case AST_BINARY_MUL: {
             char*  opt = ((ast_binary_t*) ast->value)->operator;
             ast_t* lhs = ((ast_binary_t*) ast->value)->left;
@@ -340,6 +379,22 @@ typetag_t* generator_expression(generator_t* self, context_t* context, ast_t* as
             ASSERT_TYPE_BINARY_EXPRESSION((dtype = typetag_compare(ltype, rtype, false)), ltype, rtype, opt);
             return dtype;
         }
+        case AST_BINARY_AND:
+        case AST_BINARY_OR: 
+        case AST_BINARY_XOR: {
+            char*  opt = ((ast_binary_t*) ast->value)->operator;
+            ast_t* lhs = ((ast_binary_t*) ast->value)->left;
+            ast_t* rhs = ((ast_binary_t*) ast->value)->right;
+            /**************************************************/
+            typetag_t* ltype =
+            generator_expression(self, context, lhs);
+            EMIT(str__format(" %s ", opt));
+            typetag_t* rtype =
+            generator_expression(self, context, rhs);
+            typetag_t* dtype;
+            ASSERT_TYPE_BINARY_EXPRESSION((dtype = typetag_bitwise(ltype, rtype)), ltype, rtype, opt);
+            return dtype;
+        }
         case AST_LOGICAL_AND:
         case AST_LOGICAL_OR: {
             char*  opt = ((ast_binary_t*) ast->value)->operator;
@@ -372,7 +427,7 @@ typetag_t* generator_expression(generator_t* self, context_t* context, ast_t* as
             typetag_t* ftype =
             generator_expression(self, context, false_expr);
             typetag_t* dtype;
-            ASSERT_TYPE_MATCH((dtype = typetag_equivalent(ttype, ftype)), ttype, ftype, "?");
+            ASSERT_TYPE_MATCH((dtype = typetag_equivalent(ttype, ftype)), ttype, ftype, "?:");
             return dtype;
         }
         case AST_ASSIGN: {
@@ -382,7 +437,7 @@ typetag_t* generator_expression(generator_t* self, context_t* context, ast_t* as
             typetag_t *ltype, *rtype;
             switch (lhs->type) {
                 case AST_ID: {
-                    ltype = generator_get_identifier(self, context, lhs);
+                    ltype = generator_get_identifier(self, context, lhs, true);
                     break;
                 }
                 default:
@@ -438,10 +493,13 @@ void generator_statement(generator_t* self, context_t* context, ast_t* ast) {
                 typetag_t* variable_datatype = generator_datatype(self, context, variable_types[i]);
 
                 ast_t* variable_data = variable_datas[i];
+                EMIT(" = ");
+
                 if (variable_data != NULL) {
-                    EMIT(" = ");
                     typetag_t* value_datatype = generator_expression(self, context, variable_data);
                     ASSERT_TYPE_MATCH((typetag_can_accept(variable_datatype, value_datatype)), variable_datatype, value_datatype, "=");
+                } else {
+                    EMIT(str__format("%s", typetag_get_default_value_string(variable_datatype)));
                 }
 
                 table_insert(context->table, symbol_info_create_variable(
@@ -536,10 +594,13 @@ void generator_statement(generator_t* self, context_t* context, ast_t* ast) {
                 typetag_t* variable_datatype = generator_datatype(self, context, variable_types[i]);
 
                 ast_t* variable_data = variable_datas[i];
+                EMIT(" = ");
+
                 if (variable_data != NULL) {
-                    EMIT(" = ");
                     typetag_t* value_datatype = generator_expression(self, context, variable_data);
                     ASSERT_TYPE_MATCH((typetag_can_accept(variable_datatype, value_datatype)), variable_datatype, value_datatype, "=");
+                } else {
+                    EMIT(str__format("%s", typetag_get_default_value_string(variable_datatype)));
                 }
 
                 table_insert(context->table, symbol_info_create_variable(
@@ -641,6 +702,7 @@ void generator_statement(generator_t* self, context_t* context, ast_t* ast) {
             context_bind_function_return(function_context, function_name, symbol_info->return_type);
             
             if (export) {
+                symbol_info_mark_as_constant(symbol_info);
                 symbol_info_mark_as_exported(symbol_info);
                 EMIT_CHILD("export ");
             }
