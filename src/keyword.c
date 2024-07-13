@@ -1,7 +1,7 @@
 #include "keyword.h"
 
 
-#define KEYWORD_SIZE 22
+#define KEYWORD_SIZE 23
 const char* KEYWORD[] = {
     KEYWORD_IMPORT,
     KEYWORD_FROM,
@@ -24,6 +24,7 @@ const char* KEYWORD[] = {
     // 
     KEYWORD_IF,
     KEYWORD_ELSE,
+    KEYWORD_WHILE,
     // 
     KEYWORD_RETURN,
     // 

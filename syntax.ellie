@@ -63,13 +63,37 @@ fn foo() Void {
 console.log(factorial(5));
 console.error(factorial(5));
 
-
 if (3 > 2) {
     const x Int = 10n;
 }
 
-
-
 pub async fn get_name() String {
     return "";   
 }
+
+pub fn exp() Number {
+    while (3 > 2) {
+        return 1;
+    }
+    {
+        {
+            return 1;
+        }
+    }
+}
+
+
+var index Number = 0;
+
+while (index < 10) {
+    let msg String = "Loop";
+    console.log(msg + "...", index = index + 1);
+}
+
+if (true && false) {
+    console.warn("Hello!");
+} else 
+    console.error("Nah!");
+
+pub var K Int = 2n;
+pub const V Int = K + 10n;

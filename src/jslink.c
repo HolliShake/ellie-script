@@ -39,24 +39,28 @@ void js_link_init(context_t* context) {
             to_ptr_array((typetag_t*[]) { TYPETAG_ANY, NULL }, 1),
             TYPETAG_VOID,
             /********/ 1,
-            /*****/ true
+            /*****/ true,
+            /*****/ false
         ));
         js_link_define_method_to_object_name(context, "console", "warn", typetag_create_function_type(
             to_ptr_array((typetag_t*[]) { TYPETAG_ANY, NULL }, 1),
             TYPETAG_VOID,
             /********/ 1,
-            /*****/ true
+            /*****/ true,
+            /*****/ false
         ));
         js_link_define_method_to_object_name(context, "console", "error", typetag_create_function_type(
             to_ptr_array((typetag_t*[]) { TYPETAG_ANY, NULL }, 1),
             TYPETAG_VOID,
             /********/ 1,
-            /*****/ true
+            /*****/ true,
+            /*****/ false
         ));
         js_link_define_method_to_object_name(context, "console", "scan", typetag_create_function_type(
             to_ptr_array((typetag_t*[]) { TYPETAG_ANY, NULL }, 1),
             TYPETAG_STRING,
             /********/ 1,
+            /****/ false,
             /****/ false
         ));
 

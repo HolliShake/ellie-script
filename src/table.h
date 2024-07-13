@@ -25,6 +25,7 @@
         /**** Default prop ****/ 
         bool is_global;
         bool is_constant;
+        bool is_exported; // optional
 
         /**** For function ****/
         int argc; // supported argument count or number of parameters
@@ -36,4 +37,5 @@
 
     symbol_info_t* symbol_info_create_variable(char* name, typetag_t* data_type, bool is_global, bool is_constant);
     symbol_info_t* symbol_info_create_function(char* name, typetag_t* data_type, int argc, char** parameter_names, typetag_t** parameter_types, typetag_t* return_type, bool is_asynchronous);
+    void symbol_info_mark_as_exported(symbol_info_t* self);
 #endif

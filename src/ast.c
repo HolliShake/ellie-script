@@ -118,12 +118,13 @@ ast_ternary_t* ast_ternary_create(ast_t* condition, ast_t* left, ast_t* right) {
 
 // 
 
-ast_variable_declaration_t* ast_variable_declaration_create(ast_t** variable_name, ast_t** variable_type, ast_t** variable_value) {
+ast_variable_declaration_t* ast_variable_declaration_create(ast_t** variable_name, ast_t** variable_type, ast_t** variable_value, bool is_export) {
     ast_variable_declaration_t* ast_variable_declaration = (ast_variable_declaration_t*) Ellie_malloc(sizeof(ast_variable_declaration_t));
     assert_allocation(ast_variable_declaration);
     ast_variable_declaration->variable_name = variable_name;
     ast_variable_declaration->variable_type = variable_type;
     ast_variable_declaration->variable_value = variable_value;
+    ast_variable_declaration->is_export = is_export;
     return ast_variable_declaration;
 }
 
@@ -134,6 +135,14 @@ ast_if_t* ast_if_create(ast_t* condition, ast_t* if_body, ast_t* else_body) {
     ast_if->if_body = if_body;
     ast_if->else_body = else_body;
     return ast_if;
+}
+
+ast_while_t* ast_while_create(ast_t* condition, ast_t* body) {
+    ast_while_t* ast_while = (ast_while_t*) Ellie_malloc(sizeof(ast_while_t));
+    assert_allocation(ast_while);
+    ast_while->condition = condition;
+    ast_while->body = body;
+    return ast_while;
 }
 
 ast_function_t* ast_function_create(ast_t* function_name, ast_t** parameters_name, ast_t** parameters_type, ast_t* return_type, ast_t** body, bool is_export, bool is_async) {

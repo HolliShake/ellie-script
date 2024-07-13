@@ -66,6 +66,7 @@ symbol_info_t* symbol_info_create_variable(char* name, typetag_t* data_type, boo
     symbol_info->data_type = data_type;
     symbol_info->is_global = is_global;
     symbol_info->is_constant = is_constant;
+    symbol_info->is_exported = false;
     return symbol_info;
 }
 
@@ -79,5 +80,10 @@ symbol_info_t* symbol_info_create_function(char* name, typetag_t* data_type, int
     symbol_info->param_types = parameter_types;
     symbol_info->return_type = return_type;
     symbol_info->is_asynchronous = is_asynchronous;
+    symbol_info->is_exported = false;
     return symbol_info;
+}
+
+void symbol_info_mark_as_exported(symbol_info_t* self) {
+    self->is_exported = true;
 }

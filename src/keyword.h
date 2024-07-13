@@ -16,6 +16,7 @@
     // 
     #define KEYWORD_IF "if"
     #define KEYWORD_ELSE "else"
+    #define KEYWORD_WHILE "while"
     // 
     #define KEYWORD_NUMBER "Number"
     #define KEYWORD_INT "Int"

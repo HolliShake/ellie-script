@@ -80,6 +80,10 @@ generator_t* generator_create(char* file_path_or_name, char* source) {
 
 /****************************************/
 
+static typetag_t* generator_datatype(generator_t* self, context_t* context, ast_t* ast);
+static typetag_t* generator_expression(generator_t* self, context_t* context, ast_t* ast);
+static void generator_statement(generator_t* self, context_t* context, ast_t* ast);
+
 static
 typetag_t* generator_datatype(generator_t* self, context_t* context, ast_t* ast) {
     switch (ast->type) {
@@ -106,16 +110,40 @@ typetag_t* generator_datatype(generator_t* self, context_t* context, ast_t* ast)
 }
 
 static
+typetag_t* generator_get_identifier(generator_t* self, context_t* context, ast_t* ast) {
+    char* ID = ((ast_terminal_t*) ast->value)->value;
+    if (!table_defined(context->table, ID)) {
+        throw_errorf(ast->position, "undefined variable %s", ID);
+    }
+    EMIT(str__format("%s", ID));
+    symbol_info_t* symbol_info = table_lookup(context->table, ID);
+    return typetag_clone(symbol_info->data_type);
+}
+
+static
+typetag_member_info_t* generator_get_member(generator_t* self, context_t* context, ast_t* ast) {
+    ast_t* object_to_access = ((ast_access_t*) ast->value)->object;
+    ast_t* member_to_access = ((ast_access_t*) ast->value)->member;
+    /**************************************************/
+    ASSERT_AST_IDENTIFIER(member_to_access);
+    char* member = ((ast_terminal_t*) member_to_access->value)->value;
+
+    typetag_t* object_type = 
+    generator_expression(self, context, object_to_access);
+    if (!typetag_has_member(object_type, member)) {
+        throw_errorf(ast->position, "object of type %s has no member %s", typetag_get_name(object_type), member);
+    }
+    EMIT(".");
+    typetag_member_info_t* member_info = typetag_get_member(object_type, member);
+    EMIT(str__format("%s", member));
+    return member_info;
+}
+
+static
 typetag_t* generator_expression(generator_t* self, context_t* context, ast_t* ast) {
     switch (ast->type) {
         case AST_ID: {
-            char* ID = ((ast_terminal_t*) ast->value)->value;
-            if (!table_defined(context->table, ID)) {
-                throw_errorf(ast->position, "undefined variable %s", ID);
-            }
-            EMIT(str__format("%s", ID));
-            symbol_info_t* symbol_info = table_lookup(context->table, ID);
-            return typetag_clone(symbol_info->data_type);
+            return generator_get_identifier(self, context, ast);
         }
         case AST_NUMBER_FROM_INT: {
             char* number = ((ast_terminal_t*) ast->value)->value;
@@ -148,20 +176,7 @@ typetag_t* generator_expression(generator_t* self, context_t* context, ast_t* as
             return TYPETAG_NULL;
         }
         case AST_MEMBER_ACCESS: {
-            ast_t* object_to_access = ((ast_access_t*) ast->value)->object;
-            ast_t* member_to_access = ((ast_access_t*) ast->value)->member;
-            /**************************************************/
-            ASSERT_AST_IDENTIFIER(member_to_access);
-            char* member = ((ast_terminal_t*) member_to_access->value)->value;
-
-            typetag_t* object_type = 
-            generator_expression(self, context, object_to_access);
-            if (!typetag_has_member(object_type, member)) {
-                throw_errorf(ast->position, "object of type %s has no member %s", typetag_get_name(object_type), member);
-            }
-            EMIT(".");
-            typetag_member_info_t* member_info = typetag_get_member(object_type, member);
-            EMIT(str__format("%s", member));
+            typetag_member_info_t* member_info = generator_get_member(self, context, ast);
             return typetag_clone(member_info->data_type);
         }
         case AST_CALL: {
@@ -174,7 +189,6 @@ typetag_t* generator_expression(generator_t* self, context_t* context, ast_t* as
             if (!typetag_is_callable(function_type)) {
                 throw_errorf(ast->position, "expected a function type, got %s", typetag_get_name(function_type));
             }
-
             EMIT("(");
             size_t i = 0;
             while (arguments[i] != NULL) {
@@ -326,6 +340,21 @@ typetag_t* generator_expression(generator_t* self, context_t* context, ast_t* as
             ASSERT_TYPE_BINARY_EXPRESSION((dtype = typetag_compare(ltype, rtype, false)), ltype, rtype, opt);
             return dtype;
         }
+        case AST_LOGICAL_AND:
+        case AST_LOGICAL_OR: {
+            char*  opt = ((ast_binary_t*) ast->value)->operator;
+            ast_t* lhs = ((ast_binary_t*) ast->value)->left;
+            ast_t* rhs = ((ast_binary_t*) ast->value)->right;
+            /**************************************************/
+            typetag_t* ltype =
+            generator_expression(self, context, lhs);
+            EMIT(str__format(" %s ", opt));
+            typetag_t* rtype =
+            generator_expression(self, context, rhs);
+            typetag_t* dtype;
+            ASSERT_TYPE_BINARY_EXPRESSION((dtype = typetag_logical(ltype, rtype)), ltype, rtype, opt);
+            return dtype;
+        }
         case AST_TERNARY: {
             ast_t* condition  = ((ast_ternary_t*) ast->value)->condition;
             ast_t* true_expr  = ((ast_ternary_t*) ast->value)->left;
@@ -345,6 +374,25 @@ typetag_t* generator_expression(generator_t* self, context_t* context, ast_t* as
             typetag_t* dtype;
             ASSERT_TYPE_MATCH((dtype = typetag_equivalent(ttype, ftype)), ttype, ftype, "?");
             return dtype;
+        }
+        case AST_ASSIGN: {
+            ast_t* lhs = ((ast_binary_t*) ast->value)->left;
+            ast_t* rhs = ((ast_binary_t*) ast->value)->right;
+            /**************************************************/
+            typetag_t *ltype, *rtype;
+            switch (lhs->type) {
+                case AST_ID: {
+                    ltype = generator_get_identifier(self, context, lhs);
+                    break;
+                }
+                default:
+                    throw_errore(ast->position, "invalid left-hand side in assignment");
+            }
+            EMIT(" = ");
+            rtype = 
+            generator_expression(self, context, rhs);
+            ASSERT_TYPE_MATCH((typetag_can_accept(ltype, rtype)), ltype, rtype, "=");
+            return typetag_clone(ltype);
         }
         default:
             DUMP_JSCODE();
@@ -368,6 +416,11 @@ void generator_statement(generator_t* self, context_t* context, ast_t* ast) {
             ast_t** variable_types = ((ast_variable_declaration_t*) ast->value)->variable_type;
             ast_t** variable_datas = ((ast_variable_declaration_t*) ast->value)->variable_value;
             /**************************************************/
+            if (((ast_variable_declaration_t*) ast->value)->is_export) {
+                EMIT_CHILD("export ");
+            } else {
+                EMIT("");
+            }
             EMIT_CHILD("var ");
 
             size_t i = 0;
@@ -412,6 +465,11 @@ void generator_statement(generator_t* self, context_t* context, ast_t* ast) {
             ast_t** variable_types = ((ast_variable_declaration_t*) ast->value)->variable_type;
             ast_t** variable_datas = ((ast_variable_declaration_t*) ast->value)->variable_value;
             /**************************************************/
+            if (((ast_variable_declaration_t*) ast->value)->is_export) {
+                EMIT_CHILD("export ");
+            } else {
+                EMIT("");
+            }
             EMIT_CHILD("const ");
 
             size_t i = 0;
@@ -441,7 +499,7 @@ void generator_statement(generator_t* self, context_t* context, ast_t* ast) {
                     name, 
                     variable_datatype,
                     context_is_global(context),
-                    false
+                    true
                 ));
                 if (variable_names[++i] != NULL) {
                     EMIT(", ")
@@ -452,10 +510,10 @@ void generator_statement(generator_t* self, context_t* context, ast_t* ast) {
         }
         case AST_LOCAL_DECLARATION: {
             if (!context_is_local(context)) {
-                throw_errore(ast->position, "variable declaration not allowed here");
+                throw_errore(ast->position, "local declaration not allowed here");
             }
             if (context_is_single(context)) {
-                throw_errore(ast->position, "var declaration not allowed in single context");
+                throw_errore(ast->position, "let declaration not allowed in single context");
             }
             ast_t** variable_names = ((ast_variable_declaration_t*) ast->value)->variable_name;
             ast_t** variable_types = ((ast_variable_declaration_t*) ast->value)->variable_type;
@@ -540,6 +598,33 @@ void generator_statement(generator_t* self, context_t* context, ast_t* ast) {
             }
             break;
         }
+        case AST_WHILE_STATEMENT: {
+            ast_t* condition = ((ast_while_t*) ast->value)->condition;
+            ast_t* body = ((ast_while_t*) ast->value)->body;
+            /**************************************************/
+            EMIT_CHILD("while ");
+            EMIT("(");
+            typetag_t* ctype =
+            generator_expression(self, context, condition);
+            ASSERT_BOOLEAN(ctype);
+            EMIT(")");
+            EMIT(" ");
+            context_t* iteration_context = CONTEXT_ITERATION(context);
+                context_to_single(iteration_context);
+                context_to_conditional(iteration_context);
+            if (body->type != AST_BLOCK) {
+                ASSERT_AST_NOT_EMPTY_STATEMENT(body);
+                EMIT_NEWLINE();
+                EMIT_INDENT();
+                generator_statement(self, iteration_context, body);
+                EMIT_DEDENT();
+            } else {
+                ASSERT_AST_NOT_EMPTY_STATEMENT(body);
+                EMIT_NEWLINE();
+                generator_statement(self, iteration_context, body);
+            }
+            break;
+        }
         case AST_ASYNC_FUNCTION:
         case AST_FUNCTION: {
             if (!context_is_global(context)) {
@@ -556,6 +641,7 @@ void generator_statement(generator_t* self, context_t* context, ast_t* ast) {
             context_bind_function_return(function_context, function_name, symbol_info->return_type);
             
             if (export) {
+                symbol_info_mark_as_exported(symbol_info);
                 EMIT_CHILD("export ");
             }
 
@@ -644,8 +730,8 @@ void generator_statement(generator_t* self, context_t* context, ast_t* ast) {
                 throw_errore(ast->position, "return statement not allowed here");
             }
 
-            context_t* maybe_conditional = context;
             bool in_conditional = false;
+            context_t* maybe_conditional = context;
             while (maybe_conditional != NULL) {
                 if (context_is_conditional(maybe_conditional)) {
                     in_conditional = true;
@@ -735,7 +821,7 @@ void generator_forward_declaration(generator_t* self, context_t* context, ast_t*
 
             table_insert(context->table, symbol_info_create_function(
                 function_name, 
-                typetag_create_function_type(param_types, return_type, argc, false),
+                typetag_create_function_type(param_types, return_type, argc, false, function->is_async),
                 argc,
                 param_names,
                 param_types,
@@ -774,7 +860,7 @@ void generator_program(generator_t* self, ast_t* ast) {
 void* generator_generate(generator_t* self) {
     ast_t* ast = parser_parse(self->parser);
     generator_program(self, ast);
-    GC_collect_a_little();
+    GC_gcollect();
     DUMP_JSCODE();
     return self->js_code;
 }

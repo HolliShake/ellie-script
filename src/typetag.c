@@ -22,7 +22,7 @@ typetag_t* typetag_create(char* name) {
     return typetag;
 }
 
-typetag_t* typetag_create_function_type(typetag_t** param_types, typetag_t* return_type, int argc, bool is_variadict) {
+typetag_t* typetag_create_function_type(typetag_t** param_types, typetag_t* return_type, int argc, bool is_variadict, bool is_async) {
     char* type_strings = str__new(""), *old;
     for (int i = 0; i < argc; i++) {
         type_strings = str__concat(old = type_strings, typetag_get_name(param_types[i]));
@@ -40,6 +40,7 @@ typetag_t* typetag_create_function_type(typetag_t** param_types, typetag_t* retu
     typetag->argc = argc;
     typetag->is_variadict = is_variadict;
     typetag->is_callalble = true;
+    typetag->is_asynchronous = is_async;
     typetag->return_type = return_type;
     typetag->param_types = param_types;
     return typetag;
@@ -217,6 +218,10 @@ typetag_t* typetag_bitwise(typetag_t* lhs, typetag_t* rhs) {
     else if (typetag_is_int(lhs) && typetag_is_int(rhs))
         return TYPETAG_INT;
     return NULL;
+}
+
+typetag_t* typetag_logical(typetag_t* lhs, typetag_t* rhs) {
+    return typetag_equivalent(lhs, rhs);
 }
 
 typetag_t* typetag_compare(typetag_t* lhs, typetag_t* rhs, bool numeric_only)  {

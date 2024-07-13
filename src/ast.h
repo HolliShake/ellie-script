@@ -76,6 +76,7 @@
         AST_CONST_DECLARATION,
         AST_LOCAL_DECLARATION,
         AST_IF_STATEMENT,
+        AST_WHILE_STATEMENT,
         AST_ASYNC_FUNCTION,
         AST_FUNCTION,
         AST_BLOCK,
@@ -153,6 +154,7 @@
         (ast_type == AST_CONST_DECLARATION) ? AST_NAME(AST_CONST_DECLARATION) : \
         (ast_type == AST_LOCAL_DECLARATION) ? AST_NAME(AST_LOCAL_DECLARATION) : \
         (ast_type == AST_IF_STATEMENT) ? AST_NAME(AST_IF_STATEMENT) : \
+        (ast_type == AST_WHILE_STATEMENT) ? AST_NAME(AST_WHILE_STATEMENT) : \
         (ast_type == AST_ASYNC_FUNCTION) ? AST_NAME(AST_ASYNC_FUNCTION) : \
         (ast_type == AST_FUNCTION   ) ? AST_NAME(AST_FUNCTION)    : \
         (ast_type == AST_BLOCK      ) ? AST_NAME(AST_BLOCK)       : \
@@ -227,6 +229,7 @@
         ast_t** variable_name;
         ast_t** variable_type;
         ast_t** variable_value;
+        bool is_export;
     } ast_variable_declaration_t;
 
     typedef struct ast_if_struct {
@@ -234,6 +237,11 @@
         ast_t* if_body;
         ast_t* else_body;
     } ast_if_t;
+
+    typedef struct ast_while_struct {
+        ast_t* condition;
+        ast_t* body;
+    } ast_while_t;
 
     typedef struct ast_function_struct {
         ast_t* function_name;
@@ -278,8 +286,9 @@
     ast_binary_t* ast_binary_create(char* operator, ast_t* left, ast_t* right);
     ast_ternary_t* ast_ternary_create(ast_t* condition, ast_t* left, ast_t* right);
     // 
-    ast_variable_declaration_t* ast_variable_declaration_create(ast_t** variable_name, ast_t** variable_type, ast_t** variable_value);
+    ast_variable_declaration_t* ast_variable_declaration_create(ast_t** variable_name, ast_t** variable_type, ast_t** variable_value, bool is_export);
     ast_if_t* ast_if_create(ast_t* condition, ast_t* if_body, ast_t* else_body);
+    ast_while_t* ast_while_create(ast_t* condition, ast_t* body);
     ast_function_t* ast_function_create(ast_t* function_name, ast_t** parameters_name, ast_t** parameters_type, ast_t* return_type, ast_t** body, bool is_export, bool is_async);
     ast_block_t* ast_block_create(ast_t** children);
     ast_return_t* ast_return_create(ast_t* return_value);

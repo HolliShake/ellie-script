@@ -747,57 +747,41 @@ static ast_t* parser_mandatory_expression(parser_t* self) {
 
 /******************************************/
 static
+ast_t* parser_variable_declaration(parser_t* self, bool is_export);
+static
+ast_t* parser_const_declaration(parser_t* self, bool is_export);
+static
 ast_t* parser_async_function(parser_t* self, bool is_export);
 static
 ast_t* parser_function(parser_t* self, bool is_export, bool is_async);
 
 static
-ast_t* parser_if_statement(parser_t* self) {
-    position_t *start = self->curr_token->position, *ended = NULL;
-    accept_value(KEYWORD_IF);
-    accept_value("(");
-    ast_t* condition = parser_expression(self);
-    if (condition == NULL) {
-        throw_errore(self->curr_token->position, "missing if/else condition");
-    }
-    accept_value(")");
-    ast_t* if_block = parser_statement(self);
-    if (if_block == NULL) {
-        throw_errore(self->curr_token->position, "missing if block");
-    }
-    ast_t* else_block = NULL;
-    if (check_value(KEYWORD_ELSE)) {
-        accept_value(KEYWORD_ELSE);
-        else_block = parser_statement(self);
-        if (else_block == NULL) {
-            throw_errore(self->curr_token->position, "missing else block");
-        }
-    }
-    ended = self->prev_token->position;
-
-    return ast_create(
-        AST_IF_STATEMENT, 
-        position_merge(start, ended), 
-        ast_if_create(condition, if_block, else_block)
-    );
-}
-
-static
 ast_t* parser_public(parser_t* self) {
+    position_t* pub_position_starts = self->curr_token->position;
     accept_value(KEYWORD_PUB);
-    if (check_value(KEYWORD_ASYNC)) {
+    if (check_value(KEYWORD_VAR)) {
+        return parser_variable_declaration(self, true);
+    }
+    else if (check_value(KEYWORD_CONST)) {
+        return parser_const_declaration(self, true);
+    }
+    else if (check_value(KEYWORD_ASYNC)) {
         return parser_async_function(self, true);
     }
     else if (check_value(KEYWORD_FN)) {
         return parser_function(self, true, false);
     }
     else {
-        throw_errorf(self->curr_token->position, "unexpected token \"%s\", did you mean \"fn\" or \"async\"?", self->curr_token->value);
+        ast_t* statement = parser_statement(self);
+        (statement == NULL) 
+        ? throw_errore(pub_position_starts, "incomplete or missing statement")
+        : throw_errore(statement->position, "invalid use of pub statement"   );
+        return NULL;
     }
 }
 
 static
-ast_t* parser_variable_declaration(parser_t* self) {
+ast_t* parser_variable_declaration(parser_t* self, bool is_export) {
     position_t *start = self->curr_token->position, *ended = NULL;
     accept_value(KEYWORD_VAR);
 
@@ -855,12 +839,12 @@ ast_t* parser_variable_declaration(parser_t* self) {
     return ast_create(
         AST_VARIABLE_DECLARATION, 
         position_merge(start, ended), 
-        ast_variable_declaration_create(vrble_names, vrble_types, vrble_datas)
+        ast_variable_declaration_create(vrble_names, vrble_types, vrble_datas, is_export)
     );
 }
 
 static
-ast_t* parser_const_declaration(parser_t* self) {
+ast_t* parser_const_declaration(parser_t* self, bool is_export) {
     position_t *start = self->curr_token->position, *ended = NULL;
     accept_value(KEYWORD_CONST);
 
@@ -918,7 +902,7 @@ ast_t* parser_const_declaration(parser_t* self) {
     return ast_create(
         AST_CONST_DECLARATION, 
         position_merge(start, ended), 
-        ast_variable_declaration_create(vrble_names, vrble_types, vrble_datas)
+        ast_variable_declaration_create(vrble_names, vrble_types, vrble_datas, is_export)
     );
 }
 
@@ -981,7 +965,61 @@ ast_t* parser_local_declaration(parser_t* self) {
     return ast_create(
         AST_LOCAL_DECLARATION, 
         position_merge(start, ended), 
-        ast_variable_declaration_create(vrble_names, vrble_types, vrble_datas)
+        ast_variable_declaration_create(vrble_names, vrble_types, vrble_datas, false)
+    );
+}
+
+static
+ast_t* parser_if_statement(parser_t* self) {
+    position_t *start = self->curr_token->position, *ended = NULL;
+    accept_value(KEYWORD_IF);
+    accept_value("(");
+    ast_t* condition = parser_expression(self);
+    if (condition == NULL) {
+        throw_errore(self->curr_token->position, "missing if/else condition");
+    }
+    accept_value(")");
+    ast_t* if_block = parser_statement(self);
+    if (if_block == NULL) {
+        throw_errore(self->curr_token->position, "missing if block");
+    }
+    ast_t* else_block = NULL;
+    if (check_value(KEYWORD_ELSE)) {
+        accept_value(KEYWORD_ELSE);
+        else_block = parser_statement(self);
+        if (else_block == NULL) {
+            throw_errore(self->curr_token->position, "missing else block");
+        }
+    }
+    ended = self->prev_token->position;
+
+    return ast_create(
+        AST_IF_STATEMENT, 
+        position_merge(start, ended), 
+        ast_if_create(condition, if_block, else_block)
+    );
+}
+
+static
+ast_t* parser_while_statement(parser_t* self) {
+    position_t *start = self->curr_token->position, *ended = NULL;
+    accept_value(KEYWORD_WHILE);
+    accept_value("(");
+    ast_t* condition = parser_expression(self);
+    if (condition == NULL) {
+        throw_errore(self->curr_token->position, "missing while condition");
+    }
+    accept_value(")");
+    ast_t* block = parser_statement(self);
+    if (block == NULL) {
+        throw_errore(self->curr_token->position, "missing while block");
+    }
+    ended = self->prev_token->position;
+
+    return ast_create(
+        AST_WHILE_STATEMENT, 
+        position_merge(start, ended), 
+        ast_while_create(condition, block)
     );
 }
 
@@ -1092,16 +1130,19 @@ ast_t* parser_statement(parser_t* self) {
         return parser_public(self);
     }
     else if (check_value(KEYWORD_VAR)) {
-        return parser_variable_declaration(self);
+        return parser_variable_declaration(self, false);
     }
     else if (check_value(KEYWORD_CONST)) {
-        return parser_const_declaration(self);
+        return parser_const_declaration(self, false);
     }
     else if (check_value(KEYWORD_LET)) {
         return parser_local_declaration(self);
     }
     else if (check_value(KEYWORD_IF)) {
         return parser_if_statement(self);
+    }
+    else if (check_value(KEYWORD_WHILE)) {
+        return parser_while_statement(self);
     }
     else if (check_value(KEYWORD_ASYNC)) {
         return parser_async_function(self, false);

@@ -39,7 +39,7 @@
     } typetag_member_info_t;
 
     typetag_t* typetag_create(char* name);
-    typetag_t* typetag_create_function_type(typetag_t** param_types, typetag_t* return_type, int argc, bool is_variadict);
+    typetag_t* typetag_create_function_type(typetag_t** param_types, typetag_t* return_type, int argc, bool is_variadict, bool is_asynchronous);
     typetag_t* typetag_clone(typetag_t* typetag);
     char* typetag_get_name(typetag_t* self);
     // 
@@ -65,5 +65,6 @@
     typetag_t* typetag_sub(typetag_t* lhs, typetag_t* rhs);
     typetag_t* typetag_shift(typetag_t* lhs, typetag_t* rhs);
     typetag_t* typetag_bitwise(typetag_t* lhs, typetag_t* rhs);
+    typetag_t* typetag_logical(typetag_t* lhs, typetag_t* rhs);
     typetag_t* typetag_compare(typetag_t* lhs, typetag_t* rhs, bool numeric_only);
 #endif
