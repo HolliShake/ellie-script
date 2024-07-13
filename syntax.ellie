@@ -90,7 +90,7 @@ console.log("INDEX:",  index );
 
 index++;
 
-while (index < 10) {
+while (index < 100) {
     let msg String = "Loop";
     console.log(msg + "...", index = index + 1);
 }
@@ -107,5 +107,6 @@ var z Int;
 
 console.log(z);
 
-const nu Number = 10 * 2;
+const nu Number? = 10 * 2;
 
+console.log(nu);
