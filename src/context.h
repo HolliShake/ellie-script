@@ -1,6 +1,5 @@
 #include "global.h"
 #include "table.h"
-#include "typetag.h"
 
 #ifndef CONTEXT_H
 #define CONTEXT_H
@@ -27,8 +26,17 @@
         bool is_iteration;
         /**** Function prop ****/
         char* function_name;
-        typetag_t* return_type;
+        void* return_type;
         bool returned_a_value;
+        /**** Default Types ****/
+        typetag_t* any_t;
+        typetag_t* number_t;
+        typetag_t* int_t;
+        typetag_t* string_t;
+        typetag_t* bool_t;
+        typetag_t* void_t;
+        typetag_t* null_t;
+        typetag_t* array_template_t;
     } context_t;
 
     context_t* context_create(context_t* parent, bool is_global, bool is_collection, bool is_awaitable, bool is_function, bool is_iteration);
@@ -42,5 +50,14 @@
     bool context_is_conditional(context_t* self);
     void context_to_single(context_t* self);
     void context_to_conditional(context_t* self);
+    void context_initialize_default_types(context_t* context);
+    typetag_t* context_get_default_any_t(context_t* self);
+    typetag_t* context_get_default_number_t(context_t* self);
+    typetag_t* context_get_default_int_t(context_t* self);
+    typetag_t* context_get_default_string_t(context_t* self);
+    typetag_t* context_get_default_bool_t(context_t* self);
+    typetag_t* context_get_default_void_t(context_t* self);
+    typetag_t* context_get_default_null_t(context_t* self);
+    typetag_t* context_get_default_array_template_t(context_t* self);
     void context_bind_function_return(context_t* self, char* function_name, typetag_t* return_type);
 #endif

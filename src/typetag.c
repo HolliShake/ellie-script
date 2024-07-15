@@ -5,6 +5,11 @@ typetag_t* typetag_create(char* name) {
     assert_allocation(typetag);
     typetag->name = name;
     typetag->is_nullable = false;
+    typetag->is_array = false;
+    typetag->is_object = false;
+    /**** Child ******/
+    typetag->inner_0 = NULL;
+    typetag->inner_1 = NULL;
 
     /**** Members ****/
     typetag->members = (typetag_member_info_t**) Ellie_malloc(sizeof(typetag_member_info_t*));
@@ -20,6 +25,33 @@ typetag_t* typetag_create(char* name) {
     typetag->return_type = NULL;
     typetag->param_types = NULL;
     return typetag;
+}
+
+typetag_t* typetag_create_typed_object(typetag_t* key, typetag_t* val) {
+    char* str = str__format("%s<%s, %s>", TYPETAG_KEYWORD_OBJECT, typetag_get_name(key), typetag_get_name(val));
+    typetag_t* obj = typetag_create(str);
+    obj->is_object = true;
+    obj->inner_0 = key;
+    obj->inner_1 = val;
+    return obj;
+}
+
+typetag_t* typetag_create_typed_array(typetag_t* element_type) {
+    char* str = str__format("%s<%s>", TYPETAG_KEYWORD_ARRAY, typetag_get_name(element_type));
+    typetag_t* arr = typetag_create(str);
+    arr->is_array = true;
+    arr->inner_0 = element_type;
+    return arr;
+}
+
+typetag_t* typetag_create_typed_array_from_template(typetag_t* array_type, typetag_t* element_type) {
+    if (!typetag_is_array(array_type)) {
+        fprintf(stderr, "%s::%s: error type %s is not an array.\n", __FILE__, __func__, typetag_get_name(array_type));
+        exit(1);
+    }
+    typetag_t* arr = typetag_clone(array_type);
+    arr->inner_0 = element_type;
+    return arr;
 }
 
 typetag_t* typetag_create_function_type(typetag_t** param_types, typetag_t* return_type, int argc, bool is_variadict, bool is_async) {
@@ -50,6 +82,11 @@ typetag_t* typetag_create_function_type(typetag_t** param_types, typetag_t* retu
 typetag_t* typetag_clone(typetag_t* typetag) {
     typetag_t* clone = typetag_create(str__new(typetag->name));
     clone->is_nullable = typetag->is_nullable;
+    clone->is_array = typetag->is_array;
+    clone->is_object = typetag->is_object;
+    /**** Child ******/
+    clone->inner_0 = typetag->inner_0;
+    clone->inner_1 = typetag->inner_1;
 
     /**** Members ****/
     clone->member_count = typetag->member_count;
@@ -66,6 +103,12 @@ typetag_t* typetag_clone(typetag_t* typetag) {
 }
 
 char* typetag_get_name(typetag_t* self) {
+    if (self == NULL) {
+        return str__new("null");
+    }
+    if (self->name == NULL) {
+        return str__new("null");
+    }
     return str__equals(self->name, KEYWORD_VOID) ? str__new(KEYWORD_NULL) : self->name;
 }
 
@@ -89,7 +132,7 @@ char* typetag_get_default_value_string(typetag_t* self) {
 
 /*****************************************/
 
-void typetage_add_member(typetag_t* self, char* member, typetag_t* data_type, bool is_getter, bool is_accessible, bool is_mutable) {
+void typetag_add_member(typetag_t* self, char* member, typetag_t* data_type, bool is_getter, bool is_accessible, bool is_mutable, bool is_static) {
     typetag_member_info_t* member_info = (typetag_member_info_t*) Ellie_malloc(sizeof(typetag_member_info_t));
     assert_allocation(member_info);
     member_info->member = member;
@@ -97,6 +140,7 @@ void typetage_add_member(typetag_t* self, char* member, typetag_t* data_type, bo
     member_info->is_getter = is_getter;
     member_info->is_accessible = is_accessible;
     member_info->is_mutable = is_mutable;
+    member_info->is_static = is_static;
 
     self->members[self->member_count++] = member_info;
     self->members = (typetag_member_info_t**) Ellie_realloc(self->members, sizeof(typetag_member_info_t*) * (self->member_count + 1));
@@ -157,6 +201,14 @@ bool typetag_is_callable(typetag_t* self) {
     return self->is_callalble;
 }
 
+bool typetag_is_object(typetag_t* self) {
+    return self->is_object && self->inner_0 != NULL && self->inner_1 != NULL;
+}
+
+bool typetag_is_array(typetag_t* self) {
+    return self->is_array && self->inner_0 != NULL;
+}
+
 void typetag_to_nullable(typetag_t* self) {
     self->is_nullable = true;
 }
@@ -178,6 +230,8 @@ bool typetag_can_accept(typetag_t* variable_type, typetag_t* value_type) {
         return true;
     else if (typetag_is_void(variable_type) && (typetag_is_void(value_type) || typetag_is_null(value_type)))
         return true;
+    else if (typetag_is_array(variable_type) && typetag_is_array(value_type))
+        return typetag_can_accept(variable_type->inner_0, value_type->inner_0);
     return false;
 }
 
@@ -195,59 +249,59 @@ typetag_t* typetag_incdec(typetag_t* typetag) {
 
 typetag_t* typetag_mul(typetag_t* lhs, typetag_t* rhs) {
     if (typetag_is_number(lhs) && typetag_is_number(rhs))
-        return TYPETAG_NUMBER;
+        return typetag_clone(lhs);
     else if (typetag_is_int(lhs) && typetag_is_int(rhs))
-        return TYPETAG_INT;
+        return typetag_clone(lhs);
     return NULL;
 }
 
 typetag_t* typetag_div(typetag_t* lhs, typetag_t* rhs) {
     if (typetag_is_number(lhs) && typetag_is_number(rhs))
-        return TYPETAG_NUMBER;
+        return typetag_clone(lhs);
     else if (typetag_is_int(lhs) && typetag_is_int(rhs))
-        return TYPETAG_INT;
+        return typetag_clone(lhs);
     return NULL;
 }
 
 typetag_t* typetag_mod(typetag_t* lhs, typetag_t* rhs) {
     if (typetag_is_number(lhs) && typetag_is_number(rhs))
-        return TYPETAG_NUMBER;
+        return typetag_clone(lhs);
     else if (typetag_is_int(lhs) && typetag_is_int(rhs))
-        return TYPETAG_INT;
+        return typetag_clone(lhs);
     return NULL;
 }
 
 typetag_t* typetag_add(typetag_t* lhs, typetag_t* rhs) {
     if (typetag_is_string(lhs) && typetag_is_string(rhs))
-        return TYPETAG_STRING;
+        return typetag_clone(lhs);
     else if (typetag_is_number(lhs) && typetag_is_number(rhs))
-        return TYPETAG_NUMBER;
+        return typetag_clone(lhs);
     else if (typetag_is_int(lhs) && typetag_is_int(rhs))
-        return TYPETAG_INT;
+        return typetag_clone(lhs);
     return NULL;
 }
 
 typetag_t* typetag_sub(typetag_t* lhs, typetag_t* rhs) {
     if (typetag_is_number(lhs) && typetag_is_number(rhs))
-        return TYPETAG_NUMBER;
+        return typetag_clone(lhs);
     else if (typetag_is_int(lhs) && typetag_is_int(rhs))
-        return TYPETAG_INT;
+        return typetag_clone(lhs);
     return NULL;
 }
 
 typetag_t* typetag_shift(typetag_t* lhs, typetag_t* rhs) {
     if (typetag_is_number(lhs) && typetag_is_number(rhs))
-        return TYPETAG_NUMBER;
+        return typetag_clone(lhs);
     else if (typetag_is_int(lhs) && typetag_is_int(rhs))
-        return TYPETAG_INT;
+        return typetag_clone(lhs);
     return NULL;
 }
 
 typetag_t* typetag_bitwise(typetag_t* lhs, typetag_t* rhs) {
     if (typetag_is_number(lhs) && typetag_is_number(rhs))
-        return TYPETAG_NUMBER;
+        return typetag_clone(lhs);
     else if (typetag_is_int(lhs) && typetag_is_int(rhs))
-        return TYPETAG_INT;
+        return typetag_clone(lhs);
     return NULL;
 }
 
@@ -255,12 +309,12 @@ typetag_t* typetag_logical(typetag_t* lhs, typetag_t* rhs) {
     return typetag_equivalent(lhs, rhs);
 }
 
-typetag_t* typetag_compare(typetag_t* lhs, typetag_t* rhs, bool numeric_only)  {
+typetag_t* typetag_compare(typetag_t* bool_type, typetag_t* lhs, typetag_t* rhs, bool numeric_only)  {
     if ((typetag_is_string(lhs) && typetag_is_string(rhs)) && !numeric_only)
-        return TYPETAG_BOOL;
+        return typetag_clone(bool_type);
     else if ((typetag_is_number(lhs) && typetag_is_number(rhs)) && numeric_only)
-        return TYPETAG_BOOL;
+        return typetag_clone(bool_type);
     else if ((typetag_is_int(lhs) && typetag_is_int(rhs)) && numeric_only)
-        return TYPETAG_INT;
+        return typetag_clone(bool_type);
     return NULL;
 }

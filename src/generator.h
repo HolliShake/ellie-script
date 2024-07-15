@@ -21,6 +21,7 @@
 
     typedef struct generator_struct {
         parser_t* parser;
+        context_t* global;
         char* js_code;
         size_t nesting_level;
     } generator_t;

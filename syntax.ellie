@@ -1,5 +1,9 @@
+
+
 true ? "y" : "Hello!";
+
 3 + 10.2;
+
 "Hey yow!" + "Hola!";
 
 1 + 2 + 3;
@@ -68,7 +72,7 @@ if (3 > 2) {
 }
 
 pub async fn get_name() String {
-    return "";   
+    return "";
 }
 
 pub fn exp() Number {
@@ -82,18 +86,16 @@ pub fn exp() Number {
     }
 }
 
-
 var index Number = 0;
 
-console.log("INDEX:", index++);
-console.log("INDEX:",  index );
-
-index++;
-
-while (index < 100) {
+while (index < 5) {
     let msg String = "Loop";
     console.log(msg + "...", index = index + 1);
 }
+
+console.log("INDEX:", index++);
+console.log("INDEX:",  index );
+index++;
 
 if (true && false) {
     console.warn("Hello!");
@@ -110,3 +112,15 @@ console.log(z);
 const nu Number? = 10 * 2;
 
 console.log(nu);
+
+fn return_array() Array<String>? {
+    return Array<String> [
+        "Hello",
+        "World",
+        "Nah!" 
+    ];
+}
+
+console.warn([1, 2, 3, 4, "Yeah"]);
+
+console.log(return_array());

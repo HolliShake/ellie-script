@@ -78,6 +78,12 @@ generator_t* generator_create(char* file_path_or_name, char* source) {
     }\
 }\
 
+#define ASSERT_ARRAY_ELEMENT_TYPE_MATCH(condition, required_type, element_type) {\
+    if (!condition) {\
+        throw_errorf(ast->position, "type mismatch %s and %s", typetag_get_name(required_type), typetag_get_name(element_type));\
+    }\
+}\
+
 /****************************************/
 
 #define ASSERT_AST_IDENTIFIER(ast)\
@@ -100,19 +106,27 @@ static
 typetag_t* generator_datatype(generator_t* self, context_t* context, ast_t* ast) {
     switch (ast->type) {
         case AST_NUMBER_DATA_TYPE: {
-            return TYPETAG_NUMBER;
+            return context_get_default_number_t(self->global);
         }
         case AST_BIGINT_DATA_TYPE: {
-            return TYPETAG_INT;
+            return context_get_default_int_t(self->global);
         }
         case AST_STRING_DATA_TYPE: {
-            return TYPETAG_STRING;
+            return context_get_default_string_t(self->global);
         }
         case AST_BOOL_DATA_TYPE: {
-            return TYPETAG_BOOL;
+            return context_get_default_bool_t(self->global);
         }
         case AST_VOID_DATA_TYPE: {
-            return TYPETAG_VOID;
+            return context_get_default_void_t(self->global);
+        }
+        case AST_ARRAY_DATA_TYPE: {
+            ast_t* element_type = ((ast_array_type_t*) ast->value)->type;
+            /**************************************************/
+            return TYPETAG_ARRAY_FROM_TEMPLATE(
+                context_get_default_array_template_t(self->global), 
+                generator_datatype(self, context, element_type)
+            );
         }
         case AST_NULLABLE_DATA_TYPE: {
             typetag_t* data_type = generator_datatype(self, context, ((ast_nullable_type_t*) ast->value)->type);
@@ -168,32 +182,60 @@ typetag_t* generator_expression(generator_t* self, context_t* context, ast_t* as
         case AST_NUMBER_FROM_INT: {
             char* number = ((ast_terminal_t*) ast->value)->value;
             EMIT(str__format("%s", number));
-            return TYPETAG_NUMBER;
+            return context_get_default_number_t(self->global);
         }
         case AST_NUMBER_FROM_FLOAT: {
             char* number = ((ast_terminal_t*) ast->value)->value;
             EMIT(str__format("%s", number));
-            return TYPETAG_NUMBER;
+            return context_get_default_number_t(self->global);
         }
         case AST_BIGINT: {
             char* bigint = ((ast_terminal_t*) ast->value)->value;
             EMIT(str__format("%s", bigint));
-            return TYPETAG_INT;
+            return context_get_default_int_t(self->global);
         }
         case AST_STRING: {
             char* string = ((ast_terminal_t*) ast->value)->value;
             EMIT(str__format("%s", string));
-            return TYPETAG_STRING;
+            return context_get_default_string_t(self->global);
         }
         case AST_BOOL: {
             char* boolean = ((ast_terminal_t*) ast->value)->value;
             EMIT(str__format("%s", boolean));
-            return TYPETAG_BOOL;
+            return context_get_default_bool_t(self->global);
         }
         case AST_NULL: {
             char* null = ((ast_terminal_t*) ast->value)->value;
             EMIT(str__format("%s", null));
-            return TYPETAG_NULL;
+            return context_get_default_null_t(self->global);
+        }
+        case AST_ARRAY: {
+            ast_t** elements = ((ast_array_t*) ast->value)->elements;
+            ast_t* data_type = ((ast_array_t*) ast->value)->type;
+            /**************************************************/
+            typetag_t* array_type;
+
+            if (data_type != NULL) {
+                array_type = generator_datatype(self, context, data_type);
+            } else {
+                array_type = TYPETAG_ARRAY_FROM_TEMPLATE(
+                    context_get_default_array_template_t(self->global), 
+                    context_get_default_any_t(self->global)
+                );
+            }
+
+            EMIT("[");
+            size_t i = 0;
+            while (elements[i] != NULL) {
+                typetag_t* element_type = generator_expression(self, context, elements[i]);
+                ASSERT_ARRAY_ELEMENT_TYPE_MATCH((typetag_can_accept(array_type->inner_0, element_type)), array_type->inner_0, element_type);
+
+                if (elements[++i] != NULL) {
+                    EMIT(", ");
+                }
+            }
+            EMIT("]");
+            return array_type;
         }
         case AST_MEMBER_ACCESS: {
             typetag_member_info_t* member_info = generator_get_member(self, context, ast);
@@ -239,7 +281,6 @@ typetag_t* generator_expression(generator_t* self, context_t* context, ast_t* as
                 throw_errorf(ast->position, "expected %d arguments, got %d", function_type->argc, i);
             }
             EMIT(")");
-        
             return typetag_clone(function_type->return_type);
         }
         // 
@@ -361,7 +402,7 @@ typetag_t* generator_expression(generator_t* self, context_t* context, ast_t* as
             typetag_t* rtype =
             generator_expression(self, context, rhs);
             typetag_t* dtype;
-            ASSERT_TYPE_BINARY_EXPRESSION((dtype = typetag_compare(ltype, rtype, true)), ltype, rtype, opt);
+            ASSERT_TYPE_BINARY_EXPRESSION((dtype = typetag_compare(self->global->bool_t, ltype, rtype, true)), ltype, rtype, opt);
             return dtype;
         }
         case AST_BINARY_EQ :
@@ -376,7 +417,7 @@ typetag_t* generator_expression(generator_t* self, context_t* context, ast_t* as
             typetag_t* rtype =
             generator_expression(self, context, rhs);
             typetag_t* dtype;
-            ASSERT_TYPE_BINARY_EXPRESSION((dtype = typetag_compare(ltype, rtype, false)), ltype, rtype, opt);
+            ASSERT_TYPE_BINARY_EXPRESSION((dtype = typetag_compare(self->global->bool_t, ltype, rtype, false)), ltype, rtype, opt);
             return dtype;
         }
         case AST_BINARY_AND:
@@ -899,7 +940,8 @@ void generator_forward_declaration(generator_t* self, context_t* context, ast_t*
 
 static
 void generator_program(generator_t* self, ast_t* ast) {
-    context_t* context = CONTEXT_GLOBAL();
+    context_t* context = self->global = CONTEXT_GLOBAL();
+    context_initialize_default_types(context);
     js_link_init(context);
 
     ast_t** body = ((ast_program_t*) ast->value)->children;
@@ -923,6 +965,6 @@ void* generator_generate(generator_t* self) {
     ast_t* ast = parser_parse(self->parser);
     generator_program(self, ast);
     GC_gcollect();
-    DUMP_JSCODE();
+    // DUMP_JSCODE();
     return self->js_code;
 }
