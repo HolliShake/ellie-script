@@ -402,7 +402,7 @@ typetag_t* generator_expression(generator_t* self, context_t* context, ast_t* as
             typetag_t* rtype =
             generator_expression(self, context, rhs);
             typetag_t* dtype;
-            ASSERT_TYPE_BINARY_EXPRESSION((dtype = typetag_compare(self->global->bool_t, ltype, rtype, true)), ltype, rtype, opt);
+            ASSERT_TYPE_BINARY_EXPRESSION((dtype = typetag_compare(context_get_default_bool_t(self->global), ltype, rtype, true)), ltype, rtype, opt);
             return dtype;
         }
         case AST_BINARY_EQ :
@@ -417,7 +417,7 @@ typetag_t* generator_expression(generator_t* self, context_t* context, ast_t* as
             typetag_t* rtype =
             generator_expression(self, context, rhs);
             typetag_t* dtype;
-            ASSERT_TYPE_BINARY_EXPRESSION((dtype = typetag_compare(self->global->bool_t, ltype, rtype, false)), ltype, rtype, opt);
+            ASSERT_TYPE_BINARY_EXPRESSION((dtype = typetag_compare(context_get_default_bool_t(self->global), ltype, rtype, false)), ltype, rtype, opt);
             return dtype;
         }
         case AST_BINARY_AND:
