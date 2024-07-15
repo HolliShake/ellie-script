@@ -75,7 +75,6 @@ void context_initialize_default_types(context_t* context) {
     context->bool_t = TYPETAG_BOOL;
     context->void_t = TYPETAG_VOID;
     context->null_t = TYPETAG_NULL;
-    context->array_template_t = TYPETAG_ARRAY(context->any_t);
 }
 
 typetag_t* context_get_default_any_t(context_t* self) {
@@ -124,14 +123,6 @@ typetag_t* context_get_default_void_t(context_t* self) {
         exit(1);
     }
     return self->void_t;
-}
-
-typetag_t* context_get_default_array_template_t(context_t* self) {
-    if (self->array_template_t == NULL) {
-        fprintf(stderr, "%s::%s: error array_template_t is not initialized.\n", __FILE__, __func__);
-        exit(1);
-    }
-    return self->array_template_t;
 }
 
 typetag_t* context_get_default_null_t(context_t* self) {

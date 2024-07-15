@@ -25,4 +25,9 @@ fn make_array() Array<String> {
 - [ ] Global BigInt constructor.
 - [ ] Global String constructor.
 - [ ] Global Boolean constructor.
+- [ ] Array
+  - [X] Array.push 
+  - [X] Array.pop
+  - [X] Array.shift
+  - [X] Array.unshift
 - [ ] Global Date constructor.

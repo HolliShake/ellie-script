@@ -113,7 +113,7 @@ const nu Number? = 10 * 2;
 
 console.log(nu);
 
-fn return_array() Array<String>? {
+fn return_array() Array<String> {
     return Array<String> [
         "Hello",
         "World",
@@ -123,4 +123,13 @@ fn return_array() Array<String>? {
 
 console.warn([1, 2, 3, 4, "Yeah"]);
 
-console.log(return_array());
+var x_arr Array<String> = return_array();
+x_arr.push("ADDED0");
+x_arr.push("ADDED1");
+x_arr.push("ADDED2");
+x_arr.push("100000");
+x_arr.push("200000");
+x_arr.unshift("a", "b", "c", "d");
+console.log(x_arr);
+x_arr.pop();
+console.log(x_arr);

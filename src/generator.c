@@ -50,7 +50,7 @@ generator_t* generator_create(char* file_path_or_name, char* source) {
 
 #define ASSERT_BOOLEAN(typetag) {\
     if (!typetag_is_bool(typetag)) {\
-        throw_errorf(ast->position, "expected type %s, got %s type", typetag_get_name(TYPETAG_BOOL), typetag_get_name(typetag));\
+        throw_errorf(ast->position, "expected type %s, got %s type", typetag_get_name(context_get_default_bool_t(self->global)), typetag_get_name(typetag));\
     }\
 }\
 
@@ -123,10 +123,9 @@ typetag_t* generator_datatype(generator_t* self, context_t* context, ast_t* ast)
         case AST_ARRAY_DATA_TYPE: {
             ast_t* element_type = ((ast_array_type_t*) ast->value)->type;
             /**************************************************/
-            return TYPETAG_ARRAY_FROM_TEMPLATE(
-                context_get_default_array_template_t(self->global), 
-                generator_datatype(self, context, element_type)
-            );
+            typetag_t* array_type = TYPETAG_ARRAY(generator_datatype(self, context, element_type));
+            js_link_init_array(self->global, array_type);
+            return array_type;
         }
         case AST_NULLABLE_DATA_TYPE: {
             typetag_t* data_type = generator_datatype(self, context, ((ast_nullable_type_t*) ast->value)->type);
@@ -213,16 +212,11 @@ typetag_t* generator_expression(generator_t* self, context_t* context, ast_t* as
             ast_t** elements = ((ast_array_t*) ast->value)->elements;
             ast_t* data_type = ((ast_array_t*) ast->value)->type;
             /**************************************************/
-            typetag_t* array_type;
+            typetag_t* array_type = (data_type != NULL) 
+                ? generator_datatype(self, context, data_type) 
+                : TYPETAG_ARRAY(context_get_default_any_t(self->global));
 
-            if (data_type != NULL) {
-                array_type = generator_datatype(self, context, data_type);
-            } else {
-                array_type = TYPETAG_ARRAY_FROM_TEMPLATE(
-                    context_get_default_array_template_t(self->global), 
-                    context_get_default_any_t(self->global)
-                );
-            }
+            js_link_init_array(self->global, array_type);
 
             EMIT("[");
             size_t i = 0;

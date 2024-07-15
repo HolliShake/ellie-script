@@ -36,7 +36,6 @@
         typetag_t* bool_t;
         typetag_t* void_t;
         typetag_t* null_t;
-        typetag_t* array_template_t;
     } context_t;
 
     context_t* context_create(context_t* parent, bool is_global, bool is_collection, bool is_awaitable, bool is_function, bool is_iteration);
@@ -58,6 +57,5 @@
     typetag_t* context_get_default_bool_t(context_t* self);
     typetag_t* context_get_default_void_t(context_t* self);
     typetag_t* context_get_default_null_t(context_t* self);
-    typetag_t* context_get_default_array_template_t(context_t* self);
     void context_bind_function_return(context_t* self, char* function_name, typetag_t* return_type);
 #endif

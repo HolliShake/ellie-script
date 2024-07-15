@@ -19,6 +19,10 @@ void js_link_define_method_to_object_name(context_t* context, char* object_name,
         fprintf(stderr, "%s::%s: error method %s is not callable.\n", __FILE__, __func__, method_name);
         exit(1);
     }
+    if (typetag_has_member(object->data_type, method_name)) {
+        fprintf(stderr, "%s::%s: error method %s already exists.\n", __FILE__, __func__, method_name);
+        exit(1);
+    }
     typetag_add_member(object->data_type, method_name, method_type, false, true, false, false);
 }
 
@@ -32,9 +36,36 @@ void js_link_define_static_method_to_object_name(context_t* context, char* objec
         fprintf(stderr, "%s::%s: error method %s is not callable.\n", __FILE__, __func__, method_name);
         exit(1);
     }
+    if (typetag_has_member(object->data_type, method_name)) {
+        fprintf(stderr, "%s::%s: error method %s already exists.\n", __FILE__, __func__, method_name);
+        exit(1);
+    }
     typetag_add_member(object->data_type, method_name, method_type, false, true, false, true);
 }
 
+void js_link_define_method_to_object(context_t* context, typetag_t* object, char* method_name, typetag_t* method_type) {
+    if (!typetag_is_callable(method_type)) {
+        fprintf(stderr, "%s::%s: error method %s is not callable.\n", __FILE__, __func__, method_name);
+        exit(1);
+    }
+    if (typetag_has_member(object, method_name)) {
+        fprintf(stderr, "%s::%s: error method %s already exists.\n", __FILE__, __func__, method_name);
+        exit(1);
+    }
+    typetag_add_member(object, method_name, method_type, false, true, false, false);
+}
+
+void js_link_define_static_method_to_object(context_t* context, typetag_t* object, char* method_name, typetag_t* method_type) {
+    if (!typetag_is_callable(method_type)) {
+        fprintf(stderr, "%s::%s: error method %s is not callable.\n", __FILE__, __func__, method_name);
+        exit(1);
+    }
+    if (typetag_has_member(object, method_name)) {
+        fprintf(stderr, "%s::%s: error method %s already exists.\n", __FILE__, __func__, method_name);
+        exit(1);
+    }
+    typetag_add_member(object, method_name, method_type, false, true, false, true);
+}
 
 static typetag_t** to_ptr_array(typetag_t** types, size_t size) {
     typetag_t** ptr_array = (typetag_t**) Ellie_malloc((size + 1) * sizeof(typetag_t*));
@@ -53,7 +84,6 @@ void js_link_init(context_t* context) {
     typetag_t* bool_t = context_get_default_bool_t(context);
     typetag_t* void_t = context_get_default_void_t(context);
     typetag_t* null_t = context_get_default_null_t(context);
-    typetag_t* array_template_t = context_get_default_array_template_t(context);
     /*******************************************************/
 
     /**** js console object *******/
@@ -88,4 +118,60 @@ void js_link_init(context_t* context) {
         ));
 
     // other
+}
+
+void js_link_init_array(context_t* context, typetag_t* array_type) {
+    typetag_t* any_t = context_get_default_any_t(context);
+    typetag_t* number_t = context_get_default_number_t(context);
+    typetag_t* int_t = context_get_default_int_t(context);
+    typetag_t* string_t = context_get_default_string_t(context);
+    typetag_t* bool_t = context_get_default_bool_t(context);
+    typetag_t* void_t = context_get_default_void_t(context);
+    typetag_t* null_t = context_get_default_null_t(context);
+    /*******************************************************/
+    if (!typetag_is_array(array_type)) {
+        fprintf(stderr, "%s::%s: error array_type is not an array.\n", __FILE__, __func__);
+        exit(1);
+    }
+
+    if (array_type->is_array_init) {
+        return;
+    }
+
+    array_type->is_array_init = true;
+
+    // Array.push
+    js_link_define_method_to_object(context, array_type, "push", typetag_create_function_type(
+        to_ptr_array((typetag_t*[]) { array_type->inner_0, NULL }, 1),
+        array_type->inner_0,
+        /*********/ 1,
+        /*****/ false,
+        /*****/ false
+    ));
+
+    // Array.pop
+    js_link_define_method_to_object(context, array_type, "pop", typetag_create_function_type(
+        to_ptr_array((typetag_t*[]) { NULL }, 0),
+        array_type->inner_0,
+        /*********/ 0,
+        /*****/ false,
+        /*****/ false
+    ));
+
+    // Array.unshift
+    js_link_define_method_to_object(context, array_type, "shift", typetag_create_function_type(
+        to_ptr_array((typetag_t*[]) { NULL }, 0),
+        array_type->inner_0,
+        /*********/ 0,
+        /*****/ false,
+        /*****/ false
+    ));
+
+    js_link_define_method_to_object(context, array_type, "unshift", typetag_create_function_type(
+        to_ptr_array((typetag_t*[]) { array_type->inner_0, NULL }, 1),
+        array_type->inner_0,
+        /********/ 1,
+        /*****/ true,
+        /*****/ false
+    ));
 }

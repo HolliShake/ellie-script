@@ -7,6 +7,10 @@ typetag_t* typetag_create(char* name) {
     typetag->is_nullable = false;
     typetag->is_array = false;
     typetag->is_object = false;
+    /******************/
+    typetag->is_array_init = false;
+    /******************/
+    typetag->is_object_init = false;
     /**** Child ******/
     typetag->inner_0 = NULL;
     typetag->inner_1 = NULL;
@@ -44,16 +48,6 @@ typetag_t* typetag_create_typed_array(typetag_t* element_type) {
     return arr;
 }
 
-typetag_t* typetag_create_typed_array_from_template(typetag_t* array_type, typetag_t* element_type) {
-    if (!typetag_is_array(array_type)) {
-        fprintf(stderr, "%s::%s: error type %s is not an array.\n", __FILE__, __func__, typetag_get_name(array_type));
-        exit(1);
-    }
-    typetag_t* arr = typetag_clone(array_type);
-    arr->inner_0 = element_type;
-    return arr;
-}
-
 typetag_t* typetag_create_function_type(typetag_t** param_types, typetag_t* return_type, int argc, bool is_variadict, bool is_async) {
     char* type_strings = str__new(""), *old;
     for (int i = 0; i < argc; i++) {
@@ -86,6 +80,10 @@ typetag_t* typetag_clone(typetag_t* typetag) {
     clone->is_nullable = typetag->is_nullable;
     clone->is_array = typetag->is_array;
     clone->is_object = typetag->is_object;
+    /******************/
+    typetag->is_array_init = typetag->is_array_init;
+    /******************/
+    typetag->is_object_init = typetag->is_object_init;
     /**** Child ******/
     clone->inner_0 = typetag->inner_0;
     clone->inner_1 = typetag->inner_1;

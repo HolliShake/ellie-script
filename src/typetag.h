@@ -24,6 +24,10 @@
         bool is_nullable;
         bool is_array;
         bool is_object;
+        /*****************/
+        bool is_array_init;
+        /*****************/
+        bool is_object_init;
         /**** Child ******/
         typetag_t* inner_0;
         typetag_t* inner_1;
@@ -52,7 +56,6 @@
     typetag_t* typetag_create(char* name);
     typetag_t* typetag_create_typed_object(typetag_t* key, typetag_t* val);
     typetag_t* typetag_create_typed_array(typetag_t* element_type);
-    typetag_t* typetag_create_typed_array_from_template(typetag_t* array_type, typetag_t* element_type);
     typetag_t* typetag_create_function_type(typetag_t** param_types, typetag_t* return_type, int argc, bool is_variadict, bool is_asynchronous);
     typetag_t* typetag_clone(typetag_t* typetag);
     char* typetag_get_name(typetag_t* self);
