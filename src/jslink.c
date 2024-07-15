@@ -53,6 +53,7 @@ void js_link_init(context_t* context) {
     typetag_t* bool_t = context_get_default_bool_t(context);
     typetag_t* void_t = context_get_default_void_t(context);
     typetag_t* null_t = context_get_default_null_t(context);
+    typetag_t* array_template_t = context_get_default_array_template_t(context);
     /*******************************************************/
 
     /**** js console object *******/

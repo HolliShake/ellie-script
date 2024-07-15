@@ -80,7 +80,9 @@ typetag_t* typetag_create_function_type(typetag_t** param_types, typetag_t* retu
 }
 
 typetag_t* typetag_clone(typetag_t* typetag) {
-    typetag_t* clone = typetag_create(str__new(typetag->name));
+    typetag_t* clone = (typetag_t*) Ellie_malloc(sizeof(typetag_t));
+    assert_allocation(typetag);
+    clone->name = typetag->name;
     clone->is_nullable = typetag->is_nullable;
     clone->is_array = typetag->is_array;
     clone->is_object = typetag->is_object;
