@@ -8,19 +8,19 @@ true ? "y" : "Hello!";
 
 1 + 2 + 3;
 
-fn test_void() Void {
+fn test_void(): void {
     2 + 2;
 }
 
-const sum_of_add Number = add(200, 23);
+const sum_of_add:number = add(200, 23);
 
 console.warn(":>>", sum_of_add);
 
-fn add(a Number, b Number) Number {
+fn add(a:number, b:number):number {
     return a + b;
 }
 
-fn sub(a Int, b Int) Int {
+fn sub(a:int, b:int):int {
     {
         if (true)
         {
@@ -32,7 +32,7 @@ fn sub(a Int, b Int) Int {
     }
 }
 
-fn mul(a Int, b Int) Int {
+fn mul(a:int, b:int):int {
     return a * b;
 }
 
@@ -43,24 +43,24 @@ if (3 > 2)
 else 
     3 > 2;
 
-var sum Number = 2 + 2, dif String = ("Hola" + "World!");
+var sum:number = 2 + 2, dif:string = ("Hola" + "World!");
 
-const x Int = 100n, y Number = sum;
+const x:int = 100n, y:number = sum;
 
 console.log(1, 2, 3, add(20, 35), 20 + 32);
 console.warn;
 console.error;
 mul(1n, 1000n);
 
-fn factorial(n Number) Number {
-    let x Number = 2, y String = "Yellow";
+fn factorial(n:number):number {
+    let x:number = 2, y:string = "Yellow";
     if (n <= 1)
         return 1;
 
     return n * factorial(n - 1);
 }
 
-fn foo() Void {
+fn foo():void {
     return null;
 }
 
@@ -68,14 +68,14 @@ console.log(factorial(5));
 console.error(factorial(5));
 
 if (3 > 2) {
-    const x Int = 10n;
+    const x:int = 10n;
 }
 
-pub async fn get_name() String {
+pub async fn get_name():string {
     return "";
 }
 
-pub fn exp() Number {
+pub fn exp():number {
     while (3 > 2) {
         return 1;
     }
@@ -86,10 +86,10 @@ pub fn exp() Number {
     }
 }
 
-var index Number = 0;
+var index:number = 0;
 
 while (index < 5) {
-    let msg String = "Loop";
+    let msg:string = "Loop";
     console.log(msg + "...", index = index + 1);
 }
 
@@ -102,19 +102,19 @@ if (true && false) {
 } else 
     console.error("Nah!");
 
-pub var K Int = 2n;
-pub const V Int = K + 10n;
+pub var K:int = 2n;
+pub const V:int = K + 10n;
 
-var z Int;
+var z:int;
 
 console.log(z);
 
-const nu Number? = 10 * 2;
+const nu:number? = 10 * 2;
 
 console.log(nu);
 
-fn return_array() Array<String> {
-    return Array<String> [
+fn return_array():Array<string> {
+    return Array<string> [
         "Hello",
         "World",
         "Nah!" 
@@ -123,13 +123,14 @@ fn return_array() Array<String> {
 
 console.warn([1, 2, 3, 4, "Yeah"]);
 
-var x_arr Array<String> = return_array();
+var x_arr:Array<string>? = return_array();
 x_arr.push("ADDED0");
-x_arr.push("ADDED1");
+x_arr.push("ADDED1");   
 x_arr.push("ADDED2");
 x_arr.push("100000");
 x_arr.push("200000");
-x_arr.unshift("a", "b", "c", "d");
+x_arr.unshift("a", "b", "c", "d");                                 
 console.log(x_arr);
 x_arr.pop();
 console.log(x_arr);
+console.log(-100);

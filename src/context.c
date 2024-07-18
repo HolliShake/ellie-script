@@ -75,6 +75,13 @@ void context_initialize_default_types(context_t* context) {
     context->bool_t = TYPETAG_BOOL;
     context->void_t = TYPETAG_VOID;
     context->null_t = TYPETAG_NULL;
+    typetag_to_type(context->any_t);
+    typetag_to_type(context->number_t);
+    typetag_to_type(context->int_t);
+    typetag_to_type(context->string_t);
+    typetag_to_type(context->bool_t);
+    typetag_to_type(context->void_t);
+    // typetag_to_type(context->null_t);
 }
 
 typetag_t* context_get_default_any_t(context_t* self) {

@@ -796,6 +796,7 @@ ast_t* parser_variable_declaration(parser_t* self, bool is_export) {
         throw_errore(self->curr_token->position, "missing variable name");
     }
 
+    accept_value(":");
     vrble_type = parser_type(self);
     if (check_value("=")) {
         accept_value("=");
@@ -819,6 +820,7 @@ ast_t* parser_variable_declaration(parser_t* self, bool is_export) {
             throw_errorf(self->prev_token->position, "missing variable name, after \"%s\", or remove this/these extra token", comma);
         }
         
+        accept_value(":");
         vrble_type = parser_type(self);
         if (check_value("=")) {
             accept_value("=");
@@ -859,6 +861,7 @@ ast_t* parser_const_declaration(parser_t* self, bool is_export) {
         throw_errore(self->curr_token->position, "missing variable name");
     }
 
+    accept_value(":");
     vrble_type = parser_type(self);
     if (check_value("=")) {
         accept_value("=");
@@ -882,6 +885,7 @@ ast_t* parser_const_declaration(parser_t* self, bool is_export) {
             throw_errorf(self->prev_token->position, "missing variable name, after \"%s\", or remove this/these extra token", comma);
         }
         
+        accept_value(":");
         vrble_type = parser_type(self);
         if (check_value("=")) {
             accept_value("=");
@@ -922,6 +926,7 @@ ast_t* parser_local_declaration(parser_t* self) {
         throw_errore(self->curr_token->position, "missing variable name");
     }
 
+    accept_value(":");
     vrble_type = parser_type(self);
     if (check_value("=")) {
         accept_value("=");
@@ -945,6 +950,7 @@ ast_t* parser_local_declaration(parser_t* self) {
             throw_errorf(self->prev_token->position, "missing variable name, after \"%s\", or remove this/these extra token", comma);
         }
         
+        accept_value(":");
         vrble_type = parser_type(self);
         if (check_value("=")) {
             accept_value("=");
@@ -1044,6 +1050,7 @@ ast_t* parser_function(parser_t* self, bool is_export, bool is_async) {
 
     ast_t* param_name = parser_terminal(self), *param_type = NULL;
     if (param_name != NULL) {
+        accept_value(":");
         param_type = parser_type(self);
 
         array_ast_ptr_push(psize, param_names, param_name);
@@ -1057,7 +1064,8 @@ ast_t* parser_function(parser_t* self, bool is_export, bool is_async) {
             if (param_name == NULL) {
                 throw_errorf(self->prev_token->position, "missing parameter name, after \"%s\", or remove this/these extra token", comma);
             }
-           
+
+            accept_value(":");
             param_type = parser_type(self);
 
             array_ast_ptr_push(psize, param_names, param_name);
@@ -1066,6 +1074,7 @@ ast_t* parser_function(parser_t* self, bool is_export, bool is_async) {
     }
     accept_value(")");
 
+    accept_value(":");
     ast_t* return_type = parser_type(self);
 
     // begin body

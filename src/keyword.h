@@ -18,11 +18,11 @@
     #define KEYWORD_ELSE "else"
     #define KEYWORD_WHILE "while"
     // 
-    #define KEYWORD_NUMBER "Number"
-    #define KEYWORD_INT "Int"
-    #define KEYWORD_STRING "String"
-    #define KEYWORD_BOOL "Bool"
-    #define KEYWORD_VOID "Void"
+    #define KEYWORD_NUMBER "number"
+    #define KEYWORD_INT "int"
+    #define KEYWORD_STRING "string"
+    #define KEYWORD_BOOL "Bbool"
+    #define KEYWORD_VOID "void"
     #define KEYWORD_OBJECT "Object"
     #define KEYWORD_ARRAY "Array"
     // 

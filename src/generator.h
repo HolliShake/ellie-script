@@ -4,6 +4,8 @@
 #include "context.h"
 #include "typetag.h"
 #include "jslink.h"
+#include "jsconsole.h"
+#include "jsarray.h"
 
 #ifndef GENERATOR_H
 #define GENERATOR_H

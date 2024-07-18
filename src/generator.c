@@ -124,11 +124,13 @@ typetag_t* generator_datatype(generator_t* self, context_t* context, ast_t* ast)
             ast_t* element_type = ((ast_array_type_t*) ast->value)->type;
             /**************************************************/
             typetag_t* array_type = TYPETAG_ARRAY(generator_datatype(self, context, element_type));
-            js_link_init_array(self->global, array_type);
+            typetag_to_type(array_type);
+            js_array_init(self->global, array_type);
             return array_type;
         }
         case AST_NULLABLE_DATA_TYPE: {
             typetag_t* data_type = generator_datatype(self, context, ((ast_nullable_type_t*) ast->value)->type);
+            typetag_to_type(data_type);
             typetag_to_nullable(data_type);
             return data_type;
         }
@@ -154,7 +156,7 @@ typetag_t* generator_get_identifier(generator_t* self, context_t* context, ast_t
 }
 
 static
-typetag_member_info_t* generator_get_member(generator_t* self, context_t* context, ast_t* ast) {
+typetag_member_info_t* generator_get_member(generator_t* self, context_t* context, ast_t* ast, bool is_mutation) {
     ast_t* object_to_access = ((ast_access_t*) ast->value)->object;
     ast_t* member_to_access = ((ast_access_t*) ast->value)->member;
     /**************************************************/
@@ -169,6 +171,12 @@ typetag_member_info_t* generator_get_member(generator_t* self, context_t* contex
     EMIT(".");
     typetag_member_info_t* member_info = typetag_get_member(object_type, member);
     EMIT(str__format("%s", member));
+    if (!member_info->is_accessible) {
+        throw_errorf(ast->position, "member %s is not accessible or is hidden", member);
+    }
+    if (is_mutation && !member_info->is_mutable) {
+        throw_errorf(ast->position, "cannot assign to immutable member %s", member);
+    }
     return member_info;
 }
 
@@ -216,7 +224,8 @@ typetag_t* generator_expression(generator_t* self, context_t* context, ast_t* as
                 ? generator_datatype(self, context, data_type) 
                 : TYPETAG_ARRAY(context_get_default_any_t(self->global));
 
-            js_link_init_array(self->global, array_type);
+            typetag_to_type(array_type);
+            js_array_init(self->global, array_type);
 
             EMIT("[");
             size_t i = 0;
@@ -232,8 +241,30 @@ typetag_t* generator_expression(generator_t* self, context_t* context, ast_t* as
             return array_type;
         }
         case AST_MEMBER_ACCESS: {
-            typetag_member_info_t* member_info = generator_get_member(self, context, ast);
+            typetag_member_info_t* member_info = generator_get_member(self, context, ast, false);
             return typetag_clone(member_info->data_type);
+        }
+        case AST_INDEX_ACCESS: {
+            ast_t* object_to_access = ((ast_access_t*) ast->value)->object;
+            ast_t* index_to_access = ((ast_access_t*) ast->value)->member;
+            /**************************************************/
+            typetag_t* object_type = 
+            generator_expression(self, context, object_to_access);
+            EMIT("[");
+            typetag_t* index_type =
+            generator_expression(self, context, index_to_access);
+            /****** ARRAY  *******/
+            if (typetag_is_array(object_type) && !typetag_is_number(index_type)) 
+                throw_errorf(ast->position, "expected type %s, got %s", typetag_get_name(context_get_default_number_t(self->global)), typetag_get_name(index_type));
+            /****** OBJECT *******/
+            else if (typetag_is_object(object_type))
+                if (!typetag_is_equal(object_type->inner_0, index_type))
+                    throw_errorf(ast->position, "expected type %s, got %s", typetag_get_name(object_type->inner_0), typetag_get_name(index_type));
+            /****** INVALID ******/
+            else
+                throw_errorf(ast->position, "expected an array or object type, got %s", typetag_get_name(object_type));
+            EMIT("]");
+            return typetag_clone(object_type->inner_0);
         }
         case AST_CALL: {
             ast_t* function_to_call = ((ast_call_t*) ast->value)->callable;
@@ -289,12 +320,76 @@ typetag_t* generator_expression(generator_t* self, context_t* context, ast_t* as
                     ltype = generator_get_identifier(self, context, lhs, true);
                     break;
                 }
+                case AST_MEMBER_ACCESS: {
+                    typetag_member_info_t* member_info = generator_get_member(self, context, lhs, true);
+                    ltype = typetag_clone(member_info->data_type);
+                    break;
+                }
                 default:
                     throw_errore(ast->position, "invalid operand in postfix expression");
             }
             EMIT(str__format("%s", opt));
             typetag_t* dtype;
-            ASSERT_TYPE_POSTFIX_EXPRESSION((dtype = typetag_incdec(ltype)), ltype, opt);
+            ASSERT_TYPE_POSTFIX_EXPRESSION((dtype = typetag_incdec(self->global, ltype)), ltype, opt);
+            return dtype;
+        }
+        case AST_UNARY_BNOT: {
+            char*  opt = ((ast_unary_t*) ast->value)->operator;
+            ast_t* rhs = ((ast_unary_t*) ast->value)->operand;
+            /**************************************************/
+            EMIT(str__format("%s", opt));
+            typetag_t* rtype =
+            generator_expression(self, context, rhs);
+            typetag_t* dtype;
+            ASSERT_TYPE_UNARY_EXPRESSION((dtype = typetag_bitwise_not(self->global, rtype)), rtype, opt);
+            return dtype;
+        }
+        case AST_UNARY_NOT: {
+            char*  opt = ((ast_unary_t*) ast->value)->operator;
+            ast_t* rhs = ((ast_unary_t*) ast->value)->operand;
+            /**************************************************/
+            EMIT(str__format("%s", opt));
+            typetag_t* rtype =
+            generator_expression(self, context, rhs);
+            typetag_t* dtype;
+            ASSERT_TYPE_UNARY_EXPRESSION((dtype = typetag_not(self->global, rtype)), rtype, opt);
+            return dtype;
+        }
+        case AST_UNARY_NEG:
+        case AST_UNARY_POS: {
+            char*  opt = ((ast_unary_t*) ast->value)->operator;
+            ast_t* rhs = ((ast_unary_t*) ast->value)->operand;
+            /**************************************************/
+            EMIT(str__format("%s", opt));
+            typetag_t* rtype =
+            generator_expression(self, context, rhs);
+            typetag_t* dtype;
+            ASSERT_TYPE_UNARY_EXPRESSION((dtype = typetag_plus_minus(self->global, rtype)), rtype, opt);
+            return dtype;
+        }
+        case AST_UNARY_INC:
+        case AST_UNARY_DEC: {
+            char*  opt = ((ast_unary_t*) ast->value)->operator;
+            ast_t* rhs = ((ast_unary_t*) ast->value)->operand;
+            /**************************************************/
+            EMIT(str__format("%s", opt));
+            
+            typetag_t* rtype;
+            switch (rhs->type) {
+                case AST_ID: {
+                    rtype = generator_get_identifier(self, context,rhs, true);
+                    break;
+                }
+                case AST_MEMBER_ACCESS: {
+                    typetag_member_info_t* member_info = generator_get_member(self, context, rhs, true);
+                    rtype = typetag_clone(member_info->data_type);
+                    break;
+                }
+                default:
+                    throw_errore(ast->position, "invalid operand in unary expression");
+            }
+            typetag_t* dtype;
+            ASSERT_TYPE_UNARY_EXPRESSION((dtype = typetag_incdec(self->global, rtype)), rtype, opt);
             return dtype;
         }
         case AST_BINARY_MUL: {
@@ -308,7 +403,7 @@ typetag_t* generator_expression(generator_t* self, context_t* context, ast_t* as
             typetag_t* rtype =
             generator_expression(self, context, rhs);
             typetag_t* dtype;
-            ASSERT_TYPE_BINARY_EXPRESSION((dtype = typetag_mul(ltype, rtype)), ltype, rtype, opt);
+            ASSERT_TYPE_BINARY_EXPRESSION((dtype = typetag_mul(self->global, ltype, rtype)), ltype, rtype, opt);
             return dtype;
         }
         case AST_BINARY_DIV: {
@@ -322,7 +417,7 @@ typetag_t* generator_expression(generator_t* self, context_t* context, ast_t* as
             typetag_t* rtype =
             generator_expression(self, context, rhs);
             typetag_t* dtype;
-            ASSERT_TYPE_BINARY_EXPRESSION((dtype = typetag_div(ltype, rtype)), ltype, rtype, opt);
+            ASSERT_TYPE_BINARY_EXPRESSION((dtype = typetag_div(self->global, ltype, rtype)), ltype, rtype, opt);
             return dtype;
         }
         case AST_BINARY_MOD: {
@@ -336,7 +431,7 @@ typetag_t* generator_expression(generator_t* self, context_t* context, ast_t* as
             typetag_t* rtype =
             generator_expression(self, context, rhs);
             typetag_t* dtype;
-            ASSERT_TYPE_BINARY_EXPRESSION((dtype = typetag_mod(ltype, rtype)), ltype, rtype, opt);
+            ASSERT_TYPE_BINARY_EXPRESSION((dtype = typetag_mod(self->global, ltype, rtype)), ltype, rtype, opt);
             return dtype;
         }
         case AST_BINARY_ADD: {
@@ -350,7 +445,7 @@ typetag_t* generator_expression(generator_t* self, context_t* context, ast_t* as
             typetag_t* rtype =
             generator_expression(self, context, rhs);
             typetag_t* dtype;
-            ASSERT_TYPE_BINARY_EXPRESSION((dtype = typetag_add(ltype, rtype)), ltype, rtype, opt);
+            ASSERT_TYPE_BINARY_EXPRESSION((dtype = typetag_add(self->global, ltype, rtype)), ltype, rtype, opt);
             return dtype;
         }
         case AST_BINARY_SUB: {
@@ -364,7 +459,7 @@ typetag_t* generator_expression(generator_t* self, context_t* context, ast_t* as
             typetag_t* rtype =
             generator_expression(self, context, rhs);
             typetag_t* dtype;
-            ASSERT_TYPE_BINARY_EXPRESSION((dtype = typetag_sub(ltype, rtype)), ltype, rtype, opt);
+            ASSERT_TYPE_BINARY_EXPRESSION((dtype = typetag_sub(self->global, ltype, rtype)), ltype, rtype, opt);
             return dtype;
         }
         case AST_BINARY_LSHIFT:
@@ -379,7 +474,7 @@ typetag_t* generator_expression(generator_t* self, context_t* context, ast_t* as
             typetag_t* rtype =
             generator_expression(self, context, rhs);
             typetag_t* dtype;
-            ASSERT_TYPE_BINARY_EXPRESSION((dtype = typetag_shift(ltype, rtype)), ltype, rtype, opt);
+            ASSERT_TYPE_BINARY_EXPRESSION((dtype = typetag_shift(self->global, ltype, rtype)), ltype, rtype, opt);
             return dtype;
         }
         case AST_BINARY_GT :
@@ -396,7 +491,7 @@ typetag_t* generator_expression(generator_t* self, context_t* context, ast_t* as
             typetag_t* rtype =
             generator_expression(self, context, rhs);
             typetag_t* dtype;
-            ASSERT_TYPE_BINARY_EXPRESSION((dtype = typetag_compare(context_get_default_bool_t(self->global), ltype, rtype, true)), ltype, rtype, opt);
+            ASSERT_TYPE_BINARY_EXPRESSION((dtype = typetag_compare(self->global, context_get_default_bool_t(self->global), ltype, rtype, true)), ltype, rtype, opt);
             return dtype;
         }
         case AST_BINARY_EQ :
@@ -411,7 +506,7 @@ typetag_t* generator_expression(generator_t* self, context_t* context, ast_t* as
             typetag_t* rtype =
             generator_expression(self, context, rhs);
             typetag_t* dtype;
-            ASSERT_TYPE_BINARY_EXPRESSION((dtype = typetag_compare(context_get_default_bool_t(self->global), ltype, rtype, false)), ltype, rtype, opt);
+            ASSERT_TYPE_BINARY_EXPRESSION((dtype = typetag_compare(self->global, context_get_default_bool_t(self->global), ltype, rtype, false)), ltype, rtype, opt);
             return dtype;
         }
         case AST_BINARY_AND:
@@ -427,7 +522,7 @@ typetag_t* generator_expression(generator_t* self, context_t* context, ast_t* as
             typetag_t* rtype =
             generator_expression(self, context, rhs);
             typetag_t* dtype;
-            ASSERT_TYPE_BINARY_EXPRESSION((dtype = typetag_bitwise(ltype, rtype)), ltype, rtype, opt);
+            ASSERT_TYPE_BINARY_EXPRESSION((dtype = typetag_bitwise(self->global, ltype, rtype)), ltype, rtype, opt);
             return dtype;
         }
         case AST_LOGICAL_AND:
@@ -442,7 +537,7 @@ typetag_t* generator_expression(generator_t* self, context_t* context, ast_t* as
             typetag_t* rtype =
             generator_expression(self, context, rhs);
             typetag_t* dtype;
-            ASSERT_TYPE_BINARY_EXPRESSION((dtype = typetag_logical(ltype, rtype)), ltype, rtype, opt);
+            ASSERT_TYPE_BINARY_EXPRESSION((dtype = typetag_logical(self->global, ltype, rtype)), ltype, rtype, opt);
             return dtype;
         }
         case AST_TERNARY: {
@@ -462,7 +557,7 @@ typetag_t* generator_expression(generator_t* self, context_t* context, ast_t* as
             typetag_t* ftype =
             generator_expression(self, context, false_expr);
             typetag_t* dtype;
-            ASSERT_TYPE_MATCH((dtype = typetag_equivalent(ttype, ftype)), ttype, ftype, "?:");
+            ASSERT_TYPE_MATCH((dtype = typetag_equivalent(self->global, ttype, ftype)), ttype, ftype, "?:");
             return dtype;
         }
         case AST_ASSIGN: {
@@ -936,7 +1031,8 @@ static
 void generator_program(generator_t* self, ast_t* ast) {
     context_t* context = self->global = CONTEXT_GLOBAL();
     context_initialize_default_types(context);
-    js_link_init(context);
+    //
+    js_console_init(context);
 
     ast_t** body = ((ast_program_t*) ast->value)->children;
     size_t i;
