@@ -5,6 +5,7 @@
 #include "typetag.h"
 #include "jslink.h"
 #include "jsconsole.h"
+#include "jsnumber.h"
 #include "jsarray.h"
 
 #ifndef GENERATOR_H

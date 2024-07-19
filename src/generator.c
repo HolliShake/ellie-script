@@ -1033,6 +1033,7 @@ void generator_program(generator_t* self, ast_t* ast) {
     context_initialize_default_types(context);
     //
     js_console_init(context);
+    js_number_init(context);
 
     ast_t** body = ((ast_program_t*) ast->value)->children;
     size_t i;

@@ -1,5 +1,4 @@
 
-
 true ? "y" : "Hello!";
 
 3 + 10.2;
@@ -113,6 +112,9 @@ const nu:number? = 10 * 2;
 
 console.log(nu);
 
+
+
+
 fn return_array():Array<string> {
     return Array<string> [
         "Hello",
@@ -134,3 +136,4 @@ console.log(x_arr);
 x_arr.pop();
 console.log(x_arr);
 console.log(-100);
+x_arr[0] = "asdasd";
