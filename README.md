@@ -61,7 +61,7 @@ pub fn exp():number {
 # TODO
 
 - [X] Global console object. 
-- [X] Global Number constructor.
+- [ ] Global Number constructor.
   - [ ] Number.tryParse
 - [ ] Global BigInt constructor.
 - [ ] Global String constructor.
