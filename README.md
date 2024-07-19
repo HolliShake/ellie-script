@@ -3,18 +3,58 @@
 ### A TypeSafe JavaScript dialect, that transpiles to pure JS and runs ontop of QuickJS by Fabrice Bellard.
 
 ```js
-const sum_of_add Number = add(200, 23);
-
-console.warn(":>>", sum_of_add);
-
-fn add(a Number, b Number) Number {
-    return a + b;
+fn mul(a:int, b:int):int {
+    return a * b;
 }
 
-fn make_array() Array<String> {
-    const arr Array<String> = [ "any", "string" ];
+"Yeha" == "Yeha";
 
-    return Array<String> [ "Hello", "World" ];
+if (3 > 2) 
+    100 << 100;
+else 
+    3 > 2;
+
+var sum:number = 2 + 2, dif:string = ("Hola" + "World!");
+
+const x:int = 100n, y:number = sum;
+
+console.log(1, 2, 3, add(20, 35), 20 + 32);
+console.warn;
+console.error;
+mul(1n, 1000n);
+
+fn factorial(n:number):number {
+    let x:number = 2, y:string = "Yellow";
+    if (n <= 1)
+        return 1;
+
+    return n * factorial(n - 1);
+}
+
+fn foo():void {
+    return null;
+}
+
+console.log(factorial(5));
+console.error(factorial(5));
+
+if (3 > 2) {
+    const x:int = 10n;
+}
+
+pub async fn get_name():string {
+    return "";
+}
+
+pub fn exp():number {
+    while (3 > 2) {
+        return 1;
+    }
+    {
+        {
+            return 1;
+        }
+    }
 }
 ```
 
