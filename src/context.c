@@ -144,3 +144,7 @@ void context_bind_function_return(context_t* self, char* function_name, typetag_
     self->function_name = function_name;
     self->return_type = return_type;
 }
+
+void context_bind_array_type(context_t* self, typetag_t* array_type) {
+    self->array_type = array_type;
+}

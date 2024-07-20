@@ -112,9 +112,6 @@ const nu:number? = 10 * 2;
 
 console.log(nu);
 
-
-
-
 fn return_array():Array<string> {
     return Array<string> [
         "Hello",
@@ -123,17 +120,17 @@ fn return_array():Array<string> {
     ];
 }
 
-console.warn([1, 2, 3, 4, "Yeah"]);
+console.warn([1, 2, 3, 4, ...[1, 2, 3], "Yeah"]);
 
 var x_arr:Array<string>? = return_array();
+
 x_arr.push("ADDED0");
 x_arr.push("ADDED1");   
 x_arr.push("ADDED2");
 x_arr.push("100000");
 x_arr.push("200000");
-x_arr.unshift("a", "b", "c", "d");                                 
-console.log(x_arr);
+x_arr.unshift("a", "b", "c", "d");
+console.log(x_arr[2] = "Yeah!");
 x_arr.pop();
 console.log(x_arr);
 console.log(-100);
-x_arr[0] = "asdasd";

@@ -181,6 +181,36 @@ typetag_member_info_t* generator_get_member(generator_t* self, context_t* contex
 }
 
 static
+typetag_t* generator_get_index(generator_t* self, context_t* context, ast_t* ast, bool is_mutation) {
+    ast_t* object_to_access = ((ast_access_t*) ast->value)->object;
+    ast_t* index_to_access = ((ast_access_t*) ast->value)->member;
+    /**************************************************/
+    typetag_t* object_type = 
+    generator_expression(self, context, object_to_access);
+    EMIT("[");
+    typetag_t* index_type =
+    generator_expression(self, context, index_to_access);
+    typetag_t* dtype;
+    /****** ARRAY  *******/
+    if (typetag_is_array(object_type)) {
+        if (!typetag_is_number(index_type))
+            throw_errorf(ast->position, "expected type %s, got %s", typetag_get_name(object_type->inner_0), typetag_get_name(index_type));
+        dtype = typetag_clone(object_type->inner_0);
+    }
+    /****** OBJECT *******/
+    else if (typetag_is_object(object_type)) {
+        if (!typetag_is_equal(object_type->inner_0, index_type))
+            throw_errorf(ast->position, "expected type %s, got %s", typetag_get_name(object_type->inner_0), typetag_get_name(index_type));
+        dtype = typetag_clone(object_type->inner_1);
+    }
+    /****** INVALID ******/
+    else
+        throw_errorf(ast->position, "expected an array or object type, got %s", typetag_get_name(object_type));
+    EMIT("]");
+    return typetag_clone(dtype);
+}
+
+static
 typetag_t* generator_expression(generator_t* self, context_t* context, ast_t* ast) {
     switch (ast->type) {
         case AST_ID: {
@@ -227,10 +257,13 @@ typetag_t* generator_expression(generator_t* self, context_t* context, ast_t* as
             typetag_to_type(array_type);
             js_array_init(self->global, array_type);
 
+            context_t* array_context = CONTEXT_COLLECTION(context);
+                context_bind_array_type(array_context, array_type);
+
             EMIT("[");
             size_t i = 0;
             while (elements[i] != NULL) {
-                typetag_t* element_type = generator_expression(self, context, elements[i]);
+                typetag_t* element_type = generator_expression(self, array_context, elements[i]);
                 ASSERT_ARRAY_ELEMENT_TYPE_MATCH((typetag_can_accept(array_type->inner_0, element_type)), array_type->inner_0, element_type);
 
                 if (elements[++i] != NULL) {
@@ -245,26 +278,7 @@ typetag_t* generator_expression(generator_t* self, context_t* context, ast_t* as
             return typetag_clone(member_info->data_type);
         }
         case AST_INDEX_ACCESS: {
-            ast_t* object_to_access = ((ast_access_t*) ast->value)->object;
-            ast_t* index_to_access = ((ast_access_t*) ast->value)->member;
-            /**************************************************/
-            typetag_t* object_type = 
-            generator_expression(self, context, object_to_access);
-            EMIT("[");
-            typetag_t* index_type =
-            generator_expression(self, context, index_to_access);
-            /****** ARRAY  *******/
-            if (typetag_is_array(object_type) && !typetag_is_number(index_type)) 
-                throw_errorf(ast->position, "expected type %s, got %s", typetag_get_name(context_get_default_number_t(self->global)), typetag_get_name(index_type));
-            /****** OBJECT *******/
-            else if (typetag_is_object(object_type))
-                if (!typetag_is_equal(object_type->inner_0, index_type))
-                    throw_errorf(ast->position, "expected type %s, got %s", typetag_get_name(object_type->inner_0), typetag_get_name(index_type));
-            /****** INVALID ******/
-            else
-                throw_errorf(ast->position, "expected an array or object type, got %s", typetag_get_name(object_type));
-            EMIT("]");
-            return typetag_clone(object_type->inner_0);
+            return generator_get_index(self, context, ast, false);
         }
         case AST_CALL: {
             ast_t* function_to_call = ((ast_call_t*) ast->value)->callable;
@@ -323,6 +337,10 @@ typetag_t* generator_expression(generator_t* self, context_t* context, ast_t* as
                 case AST_MEMBER_ACCESS: {
                     typetag_member_info_t* member_info = generator_get_member(self, context, lhs, true);
                     ltype = typetag_clone(member_info->data_type);
+                    break;
+                }
+                case AST_INDEX_ACCESS: {
+                    ltype = generator_get_index(self, context, lhs, true);
                     break;
                 }
                 default:
@@ -385,12 +403,33 @@ typetag_t* generator_expression(generator_t* self, context_t* context, ast_t* as
                     rtype = typetag_clone(member_info->data_type);
                     break;
                 }
+                case AST_INDEX_ACCESS: {
+                    rtype = generator_get_index(self, context, rhs, true);
+                    break;
+                }
                 default:
                     throw_errore(ast->position, "invalid operand in unary expression");
             }
             typetag_t* dtype;
             ASSERT_TYPE_UNARY_EXPRESSION((dtype = typetag_incdec(self->global, rtype)), rtype, opt);
             return dtype;
+        }
+        case AST_UNARY_SPREAD: {
+            char*  opt = ((ast_unary_t*) ast->value)->operator;
+            ast_t* rhs = ((ast_unary_t*) ast->value)->operand;
+            /**************************************************/
+            EMIT(str__format("%s", opt));
+            typetag_t* rtype =
+            generator_expression(self, context, rhs);
+            if (typetag_is_array(rtype)) {
+                if (!typetag_can_accept(context->array_type->inner_0, rtype->inner_0)) {
+                    throw_errorf(ast->position, "expected element type to unpack %s, got %s", typetag_get_name(context->array_type->inner_0), typetag_get_name(rtype->inner_0));
+                }
+            }
+            else {
+                throw_errorf(ast->position, "expected an array or object type, got %s", typetag_get_name(rtype));
+            }
+            return rtype;
         }
         case AST_BINARY_MUL: {
             char*  opt = ((ast_binary_t*) ast->value)->operator;
@@ -568,6 +607,15 @@ typetag_t* generator_expression(generator_t* self, context_t* context, ast_t* as
             switch (lhs->type) {
                 case AST_ID: {
                     ltype = generator_get_identifier(self, context, lhs, true);
+                    break;
+                }
+                case AST_MEMBER_ACCESS: {
+                    typetag_member_info_t* member_info = generator_get_member(self, context, lhs, true);
+                    ltype = typetag_clone(member_info->data_type);
+                    break;
+                }
+                case AST_INDEX_ACCESS: {
+                    ltype = generator_get_index(self, context, lhs, true);
                     break;
                 }
                 default:

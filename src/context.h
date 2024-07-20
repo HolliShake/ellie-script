@@ -26,8 +26,10 @@
         bool is_iteration;
         /**** Function prop ****/
         char* function_name;
-        void* return_type;
+        typetag_t* return_type;
         bool returned_a_value;
+        /**** Array[T] prop ****/
+        typetag_t* array_type;
         /**** Default Types ****/
         typetag_t* any_t;
         typetag_t* number_t;
@@ -58,4 +60,5 @@
     typetag_t* context_get_default_void_t(context_t* self);
     typetag_t* context_get_default_null_t(context_t* self);
     void context_bind_function_return(context_t* self, char* function_name, typetag_t* return_type);
+    void context_bind_array_type(context_t* self, typetag_t* array_type);
 #endif
